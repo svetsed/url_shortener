@@ -6,7 +6,6 @@ import (
 )
 
 func CreateRandomString(length int) (string, error) {
-	length = 8
 	bytes := make([]byte, length)
 	_, err := rand.Read(bytes)
 	if err != nil {
