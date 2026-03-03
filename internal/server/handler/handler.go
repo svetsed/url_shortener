@@ -1,26 +1,14 @@
 package handler
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/svetsed/url_shortener/internal/model"
+	"github.com/svetsed/url_shortener/internal/service"
 	"github.com/svetsed/url_shortener/storage"
 )
-
-func CreateRandomString(len int) (string, error) {
-	len = 8
-	bytes := make([]byte, len)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.EncodeToString(bytes)[:len], nil
-}
 
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -28,6 +16,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	defer r.Body.Close()
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -35,7 +24,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// а не 500 >?
-	shortUrl, err := CreateRandomString(8)
+	shortUrl, err := service.CreateRandomString(8)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
