@@ -24,7 +24,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// а не 500 >?
-	shortUrl, err := service.CreateRandomString(8)
+	shortURL, err := service.CreateRandomString(8)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -32,7 +32,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmp := model.URL{
 		OriginalURL: string(data),
-		ShortURL: shortUrl,
+		ShortURL: shortURL,
 	}
 
 	storage.Storage = append(storage.Storage, tmp)
@@ -44,7 +44,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	// сохранение 2 url в базу данных
 	// вернуть ответ пользователю с новой ссылкой
 
-	url := "http://localhost:8080/" + shortUrl
+	url := "http://localhost:8080/" + shortURL
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
@@ -69,21 +69,21 @@ func RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundOrigUrl := ""
+	foundOrigURL := ""
 	for _, url := range storage.Storage {
 		if url.ShortURL == id {
-			foundOrigUrl = url.OriginalURL
+			foundOrigURL = url.OriginalURL
 			break
 		}
 	}
 
 	// not_found?
-	if foundOrigUrl == "" {
+	if foundOrigURL == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Location", foundOrigUrl) // orig url
+	w.Header().Set("Location", foundOrigURL) // orig url
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
