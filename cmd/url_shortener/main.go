@@ -2,22 +2,16 @@ package main
 
 import (
 	"log"
-	"log/slog"
+	"net/http"
 
-	"github.com/svetsed/url_shortener/internal/config"
-	"github.com/svetsed/url_shortener/internal/logger"
+	"github.com/svetsed/url_shortener/internal/server/handler"
 )
 
 func main() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("cannot load config: %v", err)
-	}
+	mux := http.NewServeMux()
 
-	log := logger.LoadLogger(cfg.Env)
+	mux.HandleFunc("/", handler.CreateShortURLHandler)
+	mux.HandleFunc("/{id}", handler.RedirectToOrigURLHandler)
 
-	log.Info("starting url_shortener on", slog.String("env", cfg.Env))
-
-
-	
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
