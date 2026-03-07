@@ -5,13 +5,19 @@ import (
 	"net/http"
 
 	"github.com/svetsed/url_shortener/internal/server/handler"
+	"github.com/svetsed/url_shortener/internal/service"
+	"github.com/svetsed/url_shortener/storage"
 )
 
 func main() {
+	repo := storage.NewMemoryStorage()
+	serv := service.NewService(repo)
+	h := handler.NewHandler(serv)
+
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", handler.CreateShortURLHandler)
-	mux.HandleFunc("/{id}", handler.RedirectToOrigURLHandler)
+	mux.HandleFunc("/", h.CreateShortURLHandler)
+	mux.HandleFunc("/{id}", h.RedirectToOrigURLHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
