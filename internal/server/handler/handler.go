@@ -77,9 +77,5 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Location", foundOrigURL) // orig url
-	w.WriteHeader(http.StatusTemporaryRedirect)
-
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }
