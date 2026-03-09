@@ -27,7 +27,16 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	origURL, err := io.ReadAll(r.Body)
 	if err != nil {
-		fmt.Println(err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if string(origURL) == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if !h.service.IsValidURL(string(origURL)) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -39,20 +48,16 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// проверка на валидный url
-	// проверка что такой url уже есть в базе или нет
 	// принятие короткого url если есть или создание нового короткого url
 	// проверка на уникальность короткого url (отдельная функция)
-	// сохранение 2 url в базу данных
-	// вернуть ответ пользователю с новой ссылкой
 
 	url := "http://localhost:8080/" + shortURL.ShortURL
 
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
 	w.WriteHeader(http.StatusCreated)
 
-	w.Write([]byte(url)) // short url
+	w.Write([]byte(url))
 }
 
 func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -62,9 +67,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	shortURL := r.PathValue("id")
-	// проверка что такой короткий url существует (отдельная функция)?
-	// получение оригинального url из базы
-	// редирект на него с 307
 	if shortURL == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -77,5 +79,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }

@@ -6,11 +6,11 @@ import (
 
 	"github.com/svetsed/url_shortener/internal/server/handler"
 	"github.com/svetsed/url_shortener/internal/service"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/storage/inmemory"
 )
 
 func main() {
-	repo := storage.NewMemoryStorage()
+	repo := inmemory.NewMemoryStorage()
 	serv := service.NewService(repo)
 	h := handler.NewHandler(serv)
 
