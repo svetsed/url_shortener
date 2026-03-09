@@ -3,6 +3,8 @@ package service
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
+	"net/url"
 
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/storage"
@@ -45,6 +47,24 @@ func (s *Service) GetOriginalURL(shortURL string) (string, error) {
 	}
 
 	return url.OriginalURL, nil
+}
+
+func (s *Service) IsValidURL(someURL string) bool {
+	u, err := url.ParseRequestURI(someURL)
+	if err != nil {
+		return false
+	}
+
+	if !u.IsAbs() {
+		return false
+	}
+	
+	_, err = s.repo.GetByOringURL(someURL)
+	if err != nil && errors.Is(err, storage.ErrorNotFound) {
+		return true
+	}
+
+	return false
 }
 
 func generateRandomString(length int) (string, error) {
