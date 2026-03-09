@@ -51,7 +51,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	// принятие короткого url если есть или создание нового короткого url
 	// проверка на уникальность короткого url (отдельная функция)
 
-	url := "http://localhost:8080/" + shortURL.ShortURL + "\n"
+	url := "http://localhost:8080/" + shortURL.ShortURL
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
