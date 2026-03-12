@@ -2,12 +2,14 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
@@ -345,7 +347,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 			h := NewHandler(serv)
 
 			r := httptest.NewRequest(test.method, "/{id}", nil)
-			r.SetPathValue("id", test.pathValue)
+			chiCtx := chi.NewRouteContext()
+			chiCtx.URLParams.Add("id", test.pathValue)
+
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 
 			w := httptest.NewRecorder()
 
