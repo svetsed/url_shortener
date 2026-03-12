@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/svetsed/url_shortener/internal/service"
 )
 
@@ -66,7 +67,7 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	shortURL := r.PathValue("id")
+	shortURL := chi.URLParam(r, "id")
 	if shortURL == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
