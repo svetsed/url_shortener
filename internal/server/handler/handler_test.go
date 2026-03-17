@@ -18,8 +18,7 @@ import (
 )
 
 func TestCreateShortURLHandler(t *testing.T) {
-	cfg := config.Config{}
-	config.ParseFlags(&cfg)
+    cfg := config.NewDefaultConfig()
 
 	type want struct {
 		code 		int
@@ -152,7 +151,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 				test.setup(mockSt)
 			}
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv, &cfg)
+			h := NewHandler(serv, cfg)
 
 			r := httptest.NewRequest(test.method, "/", bytes.NewReader(test.body))
 			r.Header.Set("Content-Type", "text/plain")
@@ -180,14 +179,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 	}
 }
 
-
-
-
-
-
 func TestRedirectToOrigURLHandler(t *testing.T) {
-	cfg := config.Config{}
-	config.ParseFlags(&cfg)
+    cfg := config.NewDefaultConfig()
 
 	type want struct {
 		code        int
@@ -351,7 +344,7 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 			}
 
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv, &cfg)
+			h := NewHandler(serv, cfg)
 
 			r := httptest.NewRequest(test.method, "/{id}", nil)
 			chiCtx := chi.NewRouteContext()
