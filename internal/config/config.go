@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-	LoadAddress string	`env:"SERVER_ADDRESS"`
-	BaseAddress string	`env:"BASE_URL"`
+	LoadAddress string	`env:"SERVER_ADDRESS" envDefault:":8080"`
+	BaseAddress string	`env:"BASE_URL" envDefault:"http://localhost:8080"`
 }
 
 func NewDefaultConfig() *Config {
@@ -23,21 +23,16 @@ func NewDefaultConfig() *Config {
 }
 
 func SettingConfig(cfg *Config) error {
-	err := env.Parse(cfg)
-	if err != nil {
-		return fmt.Errorf("error parse env: %v", err)
-	}
-
-	if cfg.LoadAddress == "" {
-		flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
-	}
-
-	if cfg.BaseAddress == "" {
-		flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
-	}
+	flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
+	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
 
 	if !flag.Parsed() {
 		flag.Parse()
+	}
+
+	err := env.Parse(cfg)
+	if err != nil {
+		return fmt.Errorf("error parse env: %v", err)
 	}
 
 	if err := cfg.validate(); err != nil {
