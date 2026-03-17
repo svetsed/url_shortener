@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-	LoadAddress string	`env:"SERVER_ADDRESS" envDefault:":8080"`
-	BaseAddress string	`env:"BASE_URL" envDefault:"http://localhost:8080"`
+	LoadAddress string	`env:"SERVER_ADDRESS"`
+	BaseAddress string	`env:"BASE_URL"`
 }
 
 func NewDefaultConfig() *Config {

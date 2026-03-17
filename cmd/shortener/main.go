@@ -29,5 +29,7 @@ func main() {
 	r.Post("/", h.CreateShortURLHandler)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 
+	fmt.Printf("Server starts with: server address: %s, base url: %s\n", cfg.LoadAddress, cfg.BaseAddress)
+
 	log.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
 }
