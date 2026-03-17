@@ -11,12 +11,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
 	"github.com/svetsed/url_shortener/storage/mock"
 )
 
 func TestCreateShortURLHandler(t *testing.T) {
+    cfg := config.NewDefaultConfig()
+
 	type want struct {
 		code 		int
 		response 	string
@@ -148,7 +151,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 				test.setup(mockSt)
 			}
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv)
+			h := NewHandler(serv, cfg)
 
 			r := httptest.NewRequest(test.method, "/", bytes.NewReader(test.body))
 			r.Header.Set("Content-Type", "text/plain")
@@ -176,12 +179,9 @@ func TestCreateShortURLHandler(t *testing.T) {
 	}
 }
 
-
-
-
-
-
 func TestRedirectToOrigURLHandler(t *testing.T) {
+    cfg := config.NewDefaultConfig()
+
 	type want struct {
 		code        int
 		location    string
@@ -344,7 +344,7 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 			}
 
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv)
+			h := NewHandler(serv, cfg)
 
 			r := httptest.NewRequest(test.method, "/{id}", nil)
 			chiCtx := chi.NewRouteContext()

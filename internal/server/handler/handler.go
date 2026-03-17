@@ -6,16 +6,19 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/service"
 )
 
 type Handler struct {
 	service *service.Service
+	cfg     *config.Config
 }
 
-func NewHandler(service *service.Service) *Handler {
+func NewHandler(service *service.Service, cfg *config.Config) *Handler {
 	return &Handler{
 		service: service,
+		cfg: cfg,
 	}
 }
 
@@ -52,8 +55,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	// принятие короткого url если есть или создание нового короткого url
 	// проверка на уникальность короткого url (отдельная функция)
 
-	url := "http://localhost:8080/" + shortURL.ShortURL
-
+	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
 	w.WriteHeader(http.StatusCreated)
@@ -81,5 +83,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(foundOrigURL)))
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }
