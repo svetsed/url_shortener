@@ -16,13 +16,13 @@ type Config struct {
 func NewDefaultConfig() *Config {
 	return &Config{
 		LoadAddress: ":8080",
-		BaseAddress: "http://localhost:8080/",
+		BaseAddress: "http://localhost:8080",
 	}
 }
 
 func ParseFlags(cfg *Config) error {
 	flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
-	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080/", "base address for the resulting shortened URL")
+	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
 
 	if !flag.Parsed() {
 		flag.Parse()

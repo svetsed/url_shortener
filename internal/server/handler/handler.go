@@ -55,7 +55,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	// принятие короткого url если есть или создание нового короткого url
 	// проверка на уникальность короткого url (отдельная функция)
 
-	url := h.cfg.BaseAddress + shortURL.ShortURL
+	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
 	w.WriteHeader(http.StatusCreated)
@@ -83,5 +83,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(foundOrigURL)))
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }
