@@ -14,20 +14,22 @@ import (
 )
 
 func main() {
-	cfg := config.Config{}
-	if err := config.ParseFlags(&cfg); err != nil {
+	cfg := config.NewDefaultConfig()
+	if err := config.SettingConfig(cfg); err != nil {
 		fmt.Fprint(os.Stderr, err)
 		return
 	}
 
 	repo := inmemory.NewMemoryStorage()
 	serv := service.NewService(repo)
-	h := handler.NewHandler(serv, &cfg)
+	h := handler.NewHandler(serv, cfg)
 
 	r := chi.NewRouter()
 
 	r.Post("/", h.CreateShortURLHandler)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
+
+	fmt.Printf("Server starts with: server address: %s, base url: %s\n", cfg.LoadAddress, cfg.BaseAddress)
 
 	log.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
 }

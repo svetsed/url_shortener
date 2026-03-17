@@ -6,11 +6,13 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/caarlos0/env/v11"
 )
 
 type Config struct {
-	LoadAddress string
-	BaseAddress string
+	LoadAddress string	`env:"SERVER_ADDRESS"`
+	BaseAddress string	`env:"BASE_URL"`
 }
 
 func NewDefaultConfig() *Config {
@@ -20,12 +22,17 @@ func NewDefaultConfig() *Config {
 	}
 }
 
-func ParseFlags(cfg *Config) error {
+func SettingConfig(cfg *Config) error {
 	flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
 
 	if !flag.Parsed() {
 		flag.Parse()
+	}
+
+	err := env.Parse(cfg)
+	if err != nil {
+		return fmt.Errorf("error parse env: %v", err)
 	}
 
 	if err := cfg.validate(); err != nil {
