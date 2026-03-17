@@ -15,7 +15,7 @@ import (
 
 func main() {
 	cfg := config.Config{}
-	if err := config.ParseFlags(&cfg); err != nil {
+	if err := config.SettingConfig(&cfg); err != nil {
 		fmt.Fprint(os.Stderr, err)
 		return
 	}
