@@ -34,7 +34,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 		setup  	  func(*mock.MockStorage)
 	}{
 		{
-			name: "Valid POST request with new URL",
+			name: "valid POST request with new URL",
 			want: want{
 				code:        http.StatusCreated,
 				response:    "http://localhost:8080/", // check only prefix
@@ -379,6 +379,85 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 
 				assert.Equal(t, expMsg, string(body), "Error message mismatch")
 			}
+		})
+	}
+}
+
+func TestCreateShortURLHandlerFromJSON(t *testing.T) {
+	cfg := config.NewDefaultConfig()
+
+	tests := []struct{
+		name 		   string
+		method 		   string
+		body  		   string
+		expectedStatus int
+	}{
+		{
+			name:           "base case - POST request with valid URL in JSON",
+			method:         http.MethodPost,
+			body:           `{"url": "https://example.com"}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "method not allowed",
+			method:         http.MethodGet,
+			body:           `{"url": "https://example.com"}`,
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "empty body",
+			method:         http.MethodPost,
+			body:           ``,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid JSON",
+			method:         http.MethodPost,
+			body:           `{invalid json`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "no field url",
+			method:         http.MethodPost,
+			body:           `{"link": "https://example.com"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "empty url",
+			method:         http.MethodPost,
+			body:           `{"url": ""}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockSt := mock.NewMockStorage()
+			serv := service.NewService(mockSt)
+			h := NewHandler(serv, cfg)
+
+			r := httptest.NewRequest(test.method, "/api/shorten", bytes.NewReader([]byte(test.body)))
+			r.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			h.CreateShortURLHandlerFromJSON(w, r)
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, test.expectedStatus, res.StatusCode, "Status code mismatch")
+			// assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"), "Content-Type mismatch")
+
+			_, err := io.ReadAll(res.Body)
+			assert.NoError(t, err, "Failed to read response body")
+
+			// if test.want.response != string(respBody) {
+			// 	if test.want.response == "http://localhost:8080/" {
+			// 		assert.True(t, strings.HasPrefix(string(respBody), "http://localhost:8080/"), "Response should start with base URL")
+			// 		assert.True(t, len(string(respBody)) > len("http://localhost:8080/"), "Response should contain short URL path")
+			// 	} else {
+			// 		t.Errorf("unexpected response: want - %s, but received - %s", test.want.response, string(respBody))
+			// 	}
+			// }
 		})
 	}
 }

@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/service"
 )
@@ -45,22 +47,82 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// InternalServerError?
 	shortURL, err := h.service.CreateShortURL(string(origURL))
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
+	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
+	w.WriteHeader(http.StatusCreated)
+
+	w.Write([]byte(url))
+}
+
+func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	defer r.Body.Close()
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	// принятие короткого url если есть или создание нового короткого url
-	// проверка на уникальность короткого url (отдельная функция)
+	if string(data) == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
 
-	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
+	url := make(map[string]string)
+	if err := json.Unmarshal(data, &url); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	origURL, exist := url["url"]
+	if !exist {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if origURL == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if !h.service.IsValidURL(string(origURL)) {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	shortURL, err := h.service.CreateShortURL(string(origURL))
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	res := map[string]string{
+		"result": h.cfg.BaseAddress + "/" + shortURL.ShortURL,
+	}
+
+	respData, err := json.Marshal(&res)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(respData)))
+	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
 	w.WriteHeader(http.StatusCreated)
 
-	w.Write([]byte(url))
+	w.Write(respData)
 }
 
 func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,5 +146,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(foundOrigURL)))
+	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }

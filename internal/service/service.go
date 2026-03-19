@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/svetsed/url_shortener/internal/model"
@@ -21,13 +22,30 @@ func NewService(repo storage.Repository) *Service {
 }
 
 func (s *Service) CreateShortURL(origURL string) (*model.URL, error) {
-	shortURL, err := generateRandomString(8)
-	if err != nil {
-		return nil, err
+	counter := 3 // may configure
+	shortURL := ""
+	var err error
+	for counter > 0 {
+		shortURL, err = generateRandomString(8)
+		if err != nil {
+			return nil, err
+		}
+
+		// check if this shortURL already exist or not
+		_, err = s.repo.GetByShortURL(shortURL)
+		if err != nil && errors.Is(err, storage.ErrorNotFound) {
+			break
+		}
+		counter--
+		shortURL = ""
+	}
+
+	if shortURL == "" {
+		return nil, fmt.Errorf("failed to create a unique short URL")
 	}
 
 	url := &model.URL{
-		ID: "1", // 
+		ID: "1", // TODO
 		ShortURL: shortURL,
 		OriginalURL: origURL,
 	}
