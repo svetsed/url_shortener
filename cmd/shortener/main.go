@@ -39,6 +39,7 @@ func main() {
 	)
 
 	r.Post("/", h.CreateShortURLHandler)
+	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 
 	sugarLog.Infof("Server starts with: server address - %s, base url - %s\n", cfg.LoadAddress, cfg.BaseAddress)
