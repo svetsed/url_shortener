@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/svetsed/url_shortener/internal/config"
+	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
 )
 
@@ -33,11 +34,6 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	origURL, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	if string(origURL) == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -75,41 +71,30 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if string(data) == "" {
+	if len(data) == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	url := make(map[string]string)
-	if err := json.Unmarshal(data, &url); err != nil {
+	var reqURL model.RequestJSON
+	if err := json.Unmarshal(data, &reqURL); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	origURL, exist := url["url"]
-	if !exist {
+	if !h.service.IsValidURL(string(reqURL.URL)) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	if origURL == "" {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	if !h.service.IsValidURL(string(origURL)) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	shortURL, err := h.service.CreateShortURL(string(origURL))
+	shortURL, err := h.service.CreateShortURL(string(reqURL.URL))
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
-	res := map[string]string{
-		"result": h.cfg.BaseAddress + "/" + shortURL.ShortURL,
+	res := model.ResponseJSON{
+		Result: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
 	}
 
 	respData, err := json.Marshal(&res)
