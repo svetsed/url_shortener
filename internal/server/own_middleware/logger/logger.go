@@ -1,4 +1,4 @@
-package ownmiddleware
+package logger
 
 import (
 	"net/http"

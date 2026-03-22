@@ -4,23 +4,24 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/server/handler"
+	"github.com/svetsed/url_shortener/internal/server/own_middleware/compress"
+	"github.com/svetsed/url_shortener/internal/server/own_middleware/logger"
 	"github.com/svetsed/url_shortener/internal/service"
-	"github.com/svetsed/url_shortener/internal/server/own_middleware"
 	"github.com/svetsed/url_shortener/storage/inmemory"
 	"go.uber.org/zap"
 )
 
 func main() {
-	logger, err := zap.NewDevelopment()
+	zapLogger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("logger initialization error: %v", err)
 	}
 
-	sugarLog := logger.Sugar()
+	sugarLog := zapLogger.Sugar()
 
 	cfg := config.NewDefaultConfig()
 	if err := config.SettingConfig(cfg); err != nil {
@@ -35,7 +36,8 @@ func main() {
 
 	r.Use(middleware.Recoverer,
 		middleware.RequestID,
-		ownmiddleware.LoggingMiddleware(sugarLog),
+		logger.LoggingMiddleware(sugarLog),
+		compress.GzipMiddleware,
 	)
 
 	r.Post("/", h.CreateShortURLHandler)
