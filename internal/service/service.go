@@ -67,7 +67,13 @@ func (s *Service) GetOriginalURL(shortURL string) (string, error) {
 	return url.OriginalURL, nil
 }
 
+// IsValidURL checks for an empty value, tries to parse the URL struct
+// and also checks that such a URL has not previosly been saved to the database.
 func (s *Service) IsValidURL(someURL string) bool {
+	if someURL == "" {
+		return false
+	}
+
 	u, err := url.ParseRequestURI(someURL)
 	if err != nil {
 		return false

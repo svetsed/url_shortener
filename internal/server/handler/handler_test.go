@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
@@ -47,7 +48,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "method not allowed - GET request",
 			want: want{
 				code:        http.StatusMethodNotAllowed,
-				response:    "method not allowed\n",
+				response:    "method not allowed",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodGet,
@@ -57,7 +58,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "method not allowed - PUT request",
 			want: want{
 				code:        http.StatusMethodNotAllowed,
-				response:    "method not allowed\n",
+				response:    "method not allowed",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPut,
@@ -67,7 +68,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "method not allowed - DELETE request",
 			want: want{
 				code:        http.StatusMethodNotAllowed,
-				response:    "method not allowed\n",
+				response:    "method not allowed",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodDelete,
@@ -77,7 +78,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "invalid URL - empty body",
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    "bad request\n",
+				response:    "bad request",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPost,
@@ -87,7 +88,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "invalid URL",
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    "bad request\n",
+				response:    "bad request",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPost,
@@ -97,7 +98,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "invalid URL - without protocol",
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    "bad request\n",
+				response:    "bad request",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPost,
@@ -107,7 +108,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			name: "existing URL",
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    "bad request\n",
+				response:    "bad request",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPost,
@@ -153,26 +154,45 @@ func TestCreateShortURLHandler(t *testing.T) {
 			serv := service.NewService(mockSt)
 			h := NewHandler(serv, cfg)
 
-			r := httptest.NewRequest(test.method, "/", bytes.NewReader(test.body))
-			r.Header.Set("Content-Type", "text/plain")
-			w := httptest.NewRecorder()
+			server := httptest.NewServer(http.HandlerFunc(h.CreateShortURLHandler))
+			defer server.Close()
 
-			h.CreateShortURLHandler(w, r)
-			res := w.Result()
-			defer res.Body.Close()
+			client := resty.New()
 
-			assert.Equal(t, test.want.code, res.StatusCode, "Status code mismatch")
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"), "Content-Type mismatch")
+			var resp *resty.Response
+			var err error
+			switch test.method {
+			case http.MethodPost:
+				resp, err = client.R().
+					SetHeader("Content-Type", "text/plain").
+					SetBody(test.body).
+					Post(server.URL + "/")
+			case http.MethodGet:
+				resp, err = client.R().
+					Get(server.URL + "/")
+			case http.MethodPut:
+				resp, err = client.R().
+					SetHeader("Content-Type", "text/plain").
+					SetBody(test.body).
+					Put(server.URL + "/")
+			case http.MethodDelete:
+				resp, err = client.R().
+					Delete(server.URL + "/")
+			}
 
-			respBody, err := io.ReadAll(res.Body)
+			assert.NoError(t, err, "Request failed")
+			assert.Equal(t, test.want.code, resp.StatusCode(), "Status code mismatch")
+			assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"), "Content-Type mismatch")
+
+			respBody := resp.String()
 			assert.NoError(t, err, "Failed to read response body")
 
-			if test.want.response != string(respBody) {
+			if test.want.response != respBody {
 				if test.want.response == "http://localhost:8080/" {
-					assert.True(t, strings.HasPrefix(string(respBody), "http://localhost:8080/"), "Response should start with base URL")
-					assert.True(t, len(string(respBody)) > len("http://localhost:8080/"), "Response should contain short URL path")
+					assert.True(t, strings.HasPrefix(respBody, "http://localhost:8080/"), "Response should start with base URL")
+					assert.True(t, len(respBody) > len("http://localhost:8080/"), "Response should contain short URL path")
 				} else {
-					t.Errorf("unexpected response: want - %s, but received - %s", test.want.response, string(respBody))
+					t.Errorf("unexpected response: want - %s, but received - %s", test.want.response, respBody)
 				}
 			}
 		})
