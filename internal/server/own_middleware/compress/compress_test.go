@@ -480,17 +480,8 @@ func TestShouldCompressEdgeCases(t *testing.T) {
 	}
 }
 
-// Остальные тесты (LargeData, InvalidGzipRequest, MultipleWriteCalls, 
-// WriteHeaderAfterWrite, ConcurrentRequests, ShouldCompress) остаются без изменений
-// так как они проходят или тестируют другую функциональность
-
 // TestLargeData тестирует обработку больших данных
 func TestLargeData(t *testing.T) {
-	// Генерируем большой JSON объект (около 1MB)
-	largeData := strings.Repeat(`{"id":1234567890,"name":"test","description":"`+
-		strings.Repeat("very long description ", 1000)+`"},`, 100)
-	largeData = "[" + largeData[:len(largeData)-1] + "]"
-	
 	tests := []struct {
 		name             string
 		dataSize         int // в байтах
