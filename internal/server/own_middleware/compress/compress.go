@@ -18,106 +18,118 @@ var mayCompress = map[string]bool {
 
 type gzipWriter struct {
 	http.ResponseWriter
-	writer 			   *gzip.Writer
-	statusCode 		   int
-	contentTypeChecked bool
+	writer     *gzip.Writer
+	statusCode int
+	written    bool
+	skipGzip   bool
+}
+
+func newGzipWriter(w http.ResponseWriter) *gzipWriter {
+	return &gzipWriter{
+		ResponseWriter: w,
+	}
 }
 
 func (gw *gzipWriter) Write(b []byte) (int, error) {
-	if !gw.contentTypeChecked {
-		// this means the WriteHeader was not called
-		contentType := http.DetectContentType(b)
-		gw.Header().Set("Content-Type", contentType)
+	if !gw.written {
+		gw.written = true
 
-		if shouldCompress(contentType) {
-			gz, err := gzip.NewWriterLevel(gw.ResponseWriter, gzip.BestSpeed)
-			if err != nil {
-				return 0, err
-			}
-
-			gw.writer = gz
-			gw.Header().Set("Content-Encoding", "gzip")
-		} else {
-			gw.writer = nil
-			gw.Header().Del("Content-Encoding")
-		}
-
+		// Если WriteHeader не был вызван явно, устанавливаем 200
 		if gw.statusCode == 0 {
 			gw.statusCode = http.StatusOK
 		}
 
-		gw.contentTypeChecked = true
+		// Определяем Content-Type если не установлен
+		contentType := gw.Header().Get("Content-Type")
+		if contentType == "" {
+			contentType = http.DetectContentType(b)
+			gw.Header().Set("Content-Type", contentType)
+		}
+
+		// Проверяем нужно ли сжимать
+		if shouldCompress(contentType) && gw.statusCode < 300 && len(b) > 8 && !gw.skipGzip {
+			gw.Header().Set("Content-Encoding", "gzip")
+			gw.Header().Del("Content-Length")
+			
+			// Создаем gzip.Writer только когда точно решили сжимать
+			gz, err := gzip.NewWriterLevel(gw.ResponseWriter, gzip.BestSpeed)
+			if err != nil {
+				// Если не удалось создать writer, пишем без сжатия
+				gw.skipGzip = true
+				gw.ResponseWriter.WriteHeader(gw.statusCode)
+				return gw.ResponseWriter.Write(b)
+			}
+			gw.writer = gz
+			gw.ResponseWriter.WriteHeader(gw.statusCode)
+			return gw.writer.Write(b)
+		}
+
+		// Не сжимаем
+		gw.skipGzip = true
 		gw.ResponseWriter.WriteHeader(gw.statusCode)
+		return gw.ResponseWriter.Write(b)
 	}
 
+	// После того как решение принято, продолжаем запись
 	if gw.writer != nil {
 		return gw.writer.Write(b)
 	}
-
 	return gw.ResponseWriter.Write(b)
 }
 
 func (gw *gzipWriter) WriteHeader(statusCode int) {
+	if gw.written {
+		return
+	}
+	// Сохраняем статус, но не пишем заголовки пока не знаем Content-Type
 	gw.statusCode = statusCode
 
-	if !gw.contentTypeChecked {
-		contentType := gw.Header().Get("Content-Type")
+	// Для статусов без тела — отправляем сразу
+    if statusCode == http.StatusNoContent || 
+       statusCode == http.StatusNotModified ||
+       statusCode < 200 || statusCode >= 300 {
+        gw.written = true
+        gw.skipGzip = true
+        gw.ResponseWriter.WriteHeader(statusCode)
+    }
+}
 
-		if shouldCompress(contentType) {
-			// Создаем gzip writer только если нужно сжимать
-			gz, err := gzip.NewWriterLevel(gw.ResponseWriter, gzip.BestSpeed)
-			if err != nil {
-				return
-			}
-
-			gw.writer = gz
-			gw.Header().Set("Content-Encoding", "gzip")
-			
-		} else {
-			gw.writer = nil
-			gw.Header().Del("Content-Encoding")
-		}
-
-		gw.contentTypeChecked = true
+func (gw *gzipWriter) Close() error {
+	if gw.writer != nil {
+		return gw.writer.Close()
 	}
+	return nil
+}
 
-	gw.ResponseWriter.WriteHeader(statusCode)
+func (gw *gzipWriter) Header() http.Header {
+	return gw.ResponseWriter.Header()
 }
 
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// checks, that client send to server compress data in the gzip format
-		encodings := strings.Split(r.Header.Get("Content-Encoding"), ",")
-		for _, enc := range encodings {
-			enc = strings.TrimSpace(strings.ToLower(enc))
-			if enc == "gzip" {
+		contentEncoding := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Encoding")))
+		if contentEncoding == "gzip" {
+			if r.Body != nil && r.Body != http.NoBody {
 				cr, err := gzip.NewReader(r.Body)
 				if err != nil {
-					http.Error(w, "server error", http.StatusInternalServerError)
+					http.Error(w, "invalid gzip data", http.StatusBadRequest)
 					return
 				}
 				r.Body = cr
 				defer cr.Close()
-				break
+				r.Header.Del("Content-Encoding")
 			}
 		}
 
-		// checks, that client supports gzip
 		if !clientSupportsGzip(r.Header.Values("Accept-Encoding")) {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		gzw := gzipWriter{
-			ResponseWriter: w,
-			writer: nil,
-		}
+		gzw := newGzipWriter(w)
+		defer gzw.Close()
 
-		next.ServeHTTP(&gzw, r)
-
-		if gzw.writer != nil {
-			gzw.writer.Close()
-		}
+		next.ServeHTTP(gzw, r)
 	})
 }
 
@@ -125,6 +137,8 @@ func shouldCompress(contentType string) bool {
 	if idx := strings.Index(contentType, ";"); idx != -1 {
 		contentType = contentType[:idx]
 	}
+
+	contentType = strings.TrimSpace(strings.ToLower(contentType))
 
 	_, ok := mayCompress[contentType]
 
@@ -164,13 +178,29 @@ func parseAcceptEncoding(parts []string) map[string]float64 {
 func clientSupportsGzip(acceptEncoding []string) bool {
 	encodings := parseAcceptEncoding(acceptEncoding)
 
-	if weight, ok := encodings["gzip"]; ok && weight > 0 {
-		return true
+	// Проверяем явный запрет gzip (q=0)
+	if weight, ok := encodings["gzip"]; ok && weight == 0 {
+		return false
 	}
 
-	if weight, ok := encodings["*"]; ok && weight > 0 {
-		return true
-	}
+    // Если gzip есть с положительным весом — проверяем, не предпочитает ли клиент identity
+    if gzipWeight, ok := encodings["gzip"]; ok && gzipWeight > 0 {
+        // Если identity указан и имеет больший вес — не сжимаем
+        if identityWeight, hasIdentity := encodings["identity"]; hasIdentity {
+            if identityWeight > gzipWeight {
+                return false
+            }
+        }
+        return true
+    }
 
-	return false
+	// Проверяем wildcard
+    if starWeight, ok := encodings["*"]; ok && starWeight > 0 {
+        if identityWeight, hasIdentity := encodings["identity"]; hasIdentity && identityWeight >= starWeight {
+            return false
+        }
+        return true
+    }
+
+    return false
 }
