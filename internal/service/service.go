@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/google/uuid"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/storage"
 )
@@ -22,7 +23,7 @@ func NewService(repo storage.Repository) *Service {
 }
 
 func (s *Service) CreateShortURL(origURL string) (*model.URL, error) {
-	counter := 3 // may configure
+	counter := 3 // can be made configurable
 	shortURL := ""
 	var err error
 	for counter > 0 {
@@ -44,8 +45,13 @@ func (s *Service) CreateShortURL(origURL string) (*model.URL, error) {
 		return nil, fmt.Errorf("failed to create a unique short URL")
 	}
 
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, fmt.Errorf("error creating id")
+	}
+
 	url := &model.URL{
-		ID: "1", // TODO
+		ID: id.String(),
 		ShortURL: shortURL,
 		OriginalURL: origURL,
 	}

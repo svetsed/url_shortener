@@ -11,6 +11,8 @@ import (
 	"github.com/svetsed/url_shortener/internal/server/own_middleware/compress"
 	"github.com/svetsed/url_shortener/internal/server/own_middleware/logger"
 	"github.com/svetsed/url_shortener/internal/service"
+	"github.com/svetsed/url_shortener/storage"
+	filestorage "github.com/svetsed/url_shortener/storage/file_storage"
 	"github.com/svetsed/url_shortener/storage/inmemory"
 	"go.uber.org/zap"
 )
@@ -25,10 +27,22 @@ func main() {
 
 	cfg := config.NewDefaultConfig()
 	if err := config.SettingConfig(cfg); err != nil {
-		sugarLog.Errorf("config initialization error: %v", err)
+		sugarLog.Fatalf("config initialization error: %v", err)
 	}
 
-	repo := inmemory.NewMemoryStorage()
+	var repo storage.Repository
+
+	if cfg.FileStoragePath == "" {
+		repo = inmemory.NewMemoryStorage()
+	} else {
+		repo, err = filestorage.NewFileStorage(cfg.FileStoragePath)
+		if err != nil {
+			sugarLog.Fatalf("file storage initialization error: %v", err)
+		}
+
+		defer repo.Close()
+	}
+
 	serv := service.NewService(repo)
 	h := handler.NewHandler(serv, cfg)
 
@@ -44,7 +58,7 @@ func main() {
 	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 
-	sugarLog.Infof("Server starts with: server address - %s, base url - %s\n", cfg.LoadAddress, cfg.BaseAddress)
+	sugarLog.Infof("Server starts with: server address - %s, base url - %s, and file for storage - %s\n", cfg.LoadAddress, cfg.BaseAddress, cfg.FileStoragePath)
 
 	sugarLog.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
 }
