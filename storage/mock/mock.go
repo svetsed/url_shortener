@@ -52,3 +52,7 @@ func (ms *MockStorage) GetByOringURL(origURL string) (*model.URL, error) {
 
 	return nil, storage.ErrorNotFound
 }
+
+func (ms *MockStorage) Close() error {
+	return nil
+}

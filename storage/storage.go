@@ -8,10 +8,12 @@ import (
 
 var (
 	ErrorNotFound = errors.New("not found")
+	ErrorStorageNotInitialized = errors.New("storage not initialized")
 )
 
 type Repository interface {
 	Save(url *model.URL) error
 	GetByShortURL(shortURL string) (*model.URL, error)
 	GetByOringURL(origURL string) (*model.URL, error)
+	Close() error
 }

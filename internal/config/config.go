@@ -5,26 +5,30 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
 )
 
 type Config struct {
-	LoadAddress string	`env:"SERVER_ADDRESS"`
-	BaseAddress string	`env:"BASE_URL"`
+	LoadAddress 	string	`env:"SERVER_ADDRESS"`
+	BaseAddress 	string	`env:"BASE_URL"`
+	FileStoragePath string  `env:"FILE_STORAGE_PATH"`
 }
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		LoadAddress: ":8080",
-		BaseAddress: "http://localhost:8080",
+		LoadAddress: 	 ":8080",
+		BaseAddress: 	 "http://localhost:8080",
+		FileStoragePath: "/tmp/short-url-db.json",
 	}
 }
 
 func SettingConfig(cfg *Config) error {
 	flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
+	flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/short-url-db.json", "path to the file to save data to disk")
 
 	if !flag.Parsed() {
 		flag.Parse()
@@ -33,6 +37,10 @@ func SettingConfig(cfg *Config) error {
 	err := env.Parse(cfg)
 	if err != nil {
 		return fmt.Errorf("error parse env: %v", err)
+	}
+
+	if v, exist := os.LookupEnv("FILE_STORAGE_PATH"); exist {
+		cfg.FileStoragePath = v
 	}
 
 	if err := cfg.validate(); err != nil {
