@@ -16,7 +16,10 @@ import (
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
 	"github.com/svetsed/url_shortener/storage/mock"
+	"go.uber.org/zap"
 )
+
+var sugarLog = zap.NewNop().Sugar()
 
 func TestCreateShortURLHandler(t *testing.T) {
     cfg := config.NewDefaultConfig()
@@ -152,7 +155,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 				test.setup(mockSt)
 			}
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv, cfg)
+			h := NewHandler(serv, cfg, sugarLog)
 
 			server := httptest.NewServer(http.HandlerFunc(h.CreateShortURLHandler))
 			defer server.Close()
@@ -364,7 +367,7 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 			}
 
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv, cfg)
+			h := NewHandler(serv, cfg, sugarLog)
 
 			r := httptest.NewRequest(test.method, "/{id}", nil)
 			chiCtx := chi.NewRouteContext()
@@ -454,7 +457,7 @@ func TestCreateShortURLHandlerFromJSON(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mockSt := mock.NewMockStorage()
 			serv := service.NewService(mockSt)
-			h := NewHandler(serv, cfg)
+			h := NewHandler(serv, cfg, sugarLog)
 
 			r := httptest.NewRequest(test.method, "/api/shorten", bytes.NewReader([]byte(test.body)))
 			r.Header.Set("Content-Type", "application/json")

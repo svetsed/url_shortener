@@ -11,6 +11,8 @@ import (
 	"github.com/svetsed/url_shortener/storage"
 )
 
+var _ storage.FileRepository = (*fileStorage)(nil)
+
 type fileStorage struct {
 	filepath string
 	urls 	 []model.URL
@@ -61,6 +63,9 @@ func (fs *fileStorage) load() error {
 	return nil
 }
 
+
+// ----------------   Implement Closer   ----------------
+
 func (fs *fileStorage) Close() error {
 	if fs.file != nil {
 		return fs.file.Close()
@@ -68,6 +73,9 @@ func (fs *fileStorage) Close() error {
 
 	return nil
 }
+
+
+// ---------------- Implement Repository ----------------
 
 func (fs *fileStorage) Save(url *model.URL) error {
 	fs.mu.Lock()

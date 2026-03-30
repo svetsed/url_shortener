@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -105,4 +106,13 @@ func generateRandomString(length int) (string, error) {
 	}
 
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+}
+
+func (s *Service) Ping(ctx context.Context) error {
+	pinger, ok := s.repo.(storage.Pinger)
+	if !ok {
+		return storage.ErrorNotSupported
+	}
+
+	return pinger.Ping(ctx)
 }

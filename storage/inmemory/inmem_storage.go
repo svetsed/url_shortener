@@ -7,6 +7,8 @@ import (
 	"github.com/svetsed/url_shortener/storage"
 )
 
+var _ storage.Repository = (*memoryStorage)(nil)
+
 type memoryStorage struct {
 	urls []model.URL
 	mu	 sync.RWMutex
@@ -17,6 +19,9 @@ func NewMemoryStorage() *memoryStorage {
 		urls: make([]model.URL, 0),
 	}
 }
+
+
+// ---------------- Implement Repository ----------------
 
 func (ms *memoryStorage) Save(url *model.URL) error {
 	ms.mu.Lock()
@@ -50,8 +55,4 @@ func (ms *memoryStorage) GetByOringURL(origURL string) (*model.URL, error) {
 	}
 
 	return nil, storage.ErrorNotFound
-}
-
-func (ms *memoryStorage) Close() error {
-	return nil
 }

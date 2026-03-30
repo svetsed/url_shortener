@@ -1,27 +1,32 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
 	service *service.Service
 	cfg     *config.Config
+	sugarLog *zap.SugaredLogger
 }
 
-func NewHandler(service *service.Service, cfg *config.Config) *Handler {
+func NewHandler(service *service.Service, cfg *config.Config, sugarLog *zap.SugaredLogger) *Handler {
 	return &Handler{
 		service: service,
 		cfg: cfg,
+		sugarLog: sugarLog,
 	}
 }
 
@@ -134,3 +139,23 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }
+
+func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
+	if h.service == nil {
+		h.sugarLog.Error("service not initialized")
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.Ping(ctx); err != nil {
+		h.sugarLog.Errorw("database ping failed", "error", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
