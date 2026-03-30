@@ -60,17 +60,17 @@ func (ps *postgresStorage) Ping(ctx context.Context) error {
 
 // ---------------- Implement Repository ----------------
 
-func (p *postgresStorage) Save(url *model.URL) error {
+func (ps *postgresStorage) Save(url *model.URL) error {
     // TODO: реализовать позже
     return nil
 }
 
-func (p *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
+func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
     // TODO: реализовать позже
     return nil, storage.ErrorNotFound
 }
 
-func (p *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
+func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
     // TODO: реализовать позже  
     return nil, storage.ErrorNotFound
 }
