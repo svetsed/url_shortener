@@ -14,6 +14,7 @@ import (
 	"github.com/svetsed/url_shortener/storage"
 	filestorage "github.com/svetsed/url_shortener/storage/file_storage"
 	"github.com/svetsed/url_shortener/storage/inmemory"
+	"github.com/svetsed/url_shortener/storage/postgres"
 	"go.uber.org/zap"
 )
 
@@ -31,20 +32,45 @@ func main() {
 	}
 
 	var repo storage.Repository
+	var closeFunc func() error
 
-	if cfg.FileStoragePath == "" {
-		repo = inmemory.NewMemoryStorage()
-	} else {
-		repo, err = filestorage.NewFileStorage(cfg.FileStoragePath)
+	switch {
+	case cfg.DatabaseDSN != "":
+		pg, err := postgres.NewPostgresStorage(cfg.DatabaseDSN)
+		if err != nil {
+			sugarLog.Fatalf("postgres storage initialization error: %v", err)
+		}
+		repo = pg
+		closeFunc = pg.Close
+
+		sugarLog.Info("storage in the postgres database is selected")
+	case cfg.FileStoragePath != "":
+		fs, err := filestorage.NewFileStorage(cfg.FileStoragePath)
 		if err != nil {
 			sugarLog.Fatalf("file storage initialization error: %v", err)
 		}
 
-		defer repo.Close()
+		repo = fs
+		closeFunc = fs.Close
+
+		sugarLog.Infof("file storage selected: %s", cfg.FileStoragePath)
+	default:
+		repo = inmemory.NewMemoryStorage()
+		closeFunc = nil
+
+		sugarLog.Info("memory storage selected")
+	}
+
+	if closeFunc != nil {
+		defer func() {
+			if err := closeFunc(); err != nil {
+				sugarLog.Errorf("close error: %v", err)
+			}
+		}()
 	}
 
 	serv := service.NewService(repo)
-	h := handler.NewHandler(serv, cfg)
+	h := handler.NewHandler(serv, cfg, sugarLog)
 
 	r := chi.NewRouter()
 
@@ -57,8 +83,9 @@ func main() {
 	r.Post("/", h.CreateShortURLHandler)
 	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
+	r.Get("/ping", h.HealthCheckDBHandler)
 
-	sugarLog.Infof("Server starts with: server address - %s, base url - %s, and file for storage - %s\n", cfg.LoadAddress, cfg.BaseAddress, cfg.FileStoragePath)
+	sugarLog.Infof("Server starts with: server address - %s, base url - %s", cfg.LoadAddress, cfg.BaseAddress)
 
 	sugarLog.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
 }

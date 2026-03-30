@@ -14,7 +14,8 @@ import (
 type Config struct {
 	LoadAddress 	string	`env:"SERVER_ADDRESS"`
 	BaseAddress 	string	`env:"BASE_URL"`
-	FileStoragePath string  `env:"FILE_STORAGE_PATH"`
+	FileStoragePath string  `env:"FILE_STORAGE_PATH"` 	// may empty value
+	DatabaseDSN		string	`env:"DATABASE_DSN"`		// may empty value
 }
 
 func NewDefaultConfig() *Config {
@@ -29,6 +30,8 @@ func SettingConfig(cfg *Config) error {
 	flag.StringVar(&cfg.LoadAddress, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
 	flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/short-url-db.json", "path to the file to save data to disk")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "connection string")
+
 
 	if !flag.Parsed() {
 		flag.Parse()
@@ -41,6 +44,10 @@ func SettingConfig(cfg *Config) error {
 
 	if v, exist := os.LookupEnv("FILE_STORAGE_PATH"); exist {
 		cfg.FileStoragePath = v
+	}
+		
+	if v, exist := os.LookupEnv("DATABASE_DSN"); exist {
+		cfg.DatabaseDSN = v
 	}
 
 	if err := cfg.validate(); err != nil {
