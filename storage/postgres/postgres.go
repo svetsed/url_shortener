@@ -26,7 +26,7 @@ func NewPostgresStorage(dsn string) (*postgresStorage, error) {
 	
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open dataqbase: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// // Настройки пула соединений
@@ -42,9 +42,32 @@ func NewPostgresStorage(dsn string) (*postgresStorage, error) {
 		return nil, err
 	}
 
-	return &postgresStorage{db: db}, nil
+	storage := &postgresStorage{db: db}
+
+	if err := storage.createDB(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to create database: %w", err)
+	}
+
+	return storage, nil
 }
 
+func (ps *postgresStorage) createDB(ctx context.Context) error {
+	query := `
+		CREATE TABLE IF NOT EXISTS urls (
+			id SERIAL PRIMARY KEY,
+			short_url VARCHAR(255) UNIQUE NOT NULL,
+			original_url TEXT NOT NULL,
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_irls_short ON urls(short_url);
+		CREATE INDEX IF NOT EXISTS idx_urls_original ON urls(original_url);
+	`
+	// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+
+	_, err := ps.db.ExecContext(ctx, query)
+	return err
+}
 
 
 // ----------------   Implement Pinger   ----------------
@@ -61,20 +84,78 @@ func (ps *postgresStorage) Ping(ctx context.Context) error {
 // ---------------- Implement Repository ----------------
 
 func (ps *postgresStorage) Save(url *model.URL) error {
-    // TODO: реализовать позже
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `
+		INSERT INTO urls (short_url, original_url)
+		VALUES ($1, $2)
+	`
+
+	_, err := ps.db.ExecContext(ctx, query, url.ShortURL, url.OriginalURL)
+
+	if err != nil {
+		return fmt.Errorf("failed to save url: %w", err)
+	}
+
     return nil
 }
 
 func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
-    // TODO: реализовать позже
-    return nil, storage.ErrorNotFound
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `
+		SELECT id, short_url, original_url
+		FROM urls
+		WHERE short_url = $1
+	`
+
+	url := &model.URL{}
+
+	err := ps.db.QueryRowContext(ctx, query, shortURL).Scan(
+		&url.ID,
+		&url.ShortURL,
+		&url.OriginalURL,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, storage.ErrorNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get by short url: %w", err)
+	}
+
+    return url, nil
 }
 
 func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
-    // TODO: реализовать позже  
-    return nil, storage.ErrorNotFound
-}
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) 
+	defer cancel()
 
+	query := `
+		SELECT id, short_url, original_url
+		FROM urls 
+		WHERE original_url = $1
+	`
+	url := &model.URL{}
+	err := ps.db.QueryRowContext(ctx, query, origURL).Scan(
+		&url.ID,
+		&url.ShortURL,
+		&url.OriginalURL,
+	)
+
+	if  err == sql.ErrNoRows {
+		return nil, storage.ErrorNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get by original url: %w", err)
+	}
+
+    return url, nil
+}
 
 
 // ----------------   Implement Closer   ----------------

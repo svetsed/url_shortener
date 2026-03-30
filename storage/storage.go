@@ -8,9 +8,11 @@ import (
 )
 
 var (
-	ErrorNotFound = errors.New("not found")
-	ErrorNotSupported = errors.New("not supported")
+	ErrorNotFound 			   = errors.New("not found")
+	ErrorNotSupported 		   = errors.New("not supported")
 	ErrorStorageNotInitialized = errors.New("storage not initialized")
+	ErrConflict                = errors.New("url already exists")
+
 )
 
 type Repository interface {
