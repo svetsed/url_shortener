@@ -81,7 +81,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var reqURL model.RequestJSON
+	var reqURL model.OneURLRequest
 	if err := json.Unmarshal(data, &reqURL); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -98,11 +98,65 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	res := model.ResponseJSON{
+	res := model.OneURLResponse{
 		Result: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
 	}
 
 	respData, err := json.Marshal(&res)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(respData)))
+	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
+	w.WriteHeader(http.StatusCreated)
+
+	w.Write(respData)
+}
+
+func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	defer r.Body.Close()
+	reqURLs := []model.ManyURLRequest{}
+	err := json.NewDecoder(r.Body).Decode(&reqURLs)
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if len(reqURLs) == 0 {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	respURLs := []model.ManyURLResponse{}
+	for _, url := range reqURLs {
+		if !h.service.IsValidURL(string(url.OriginalURL)) {
+			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", url.ID, url.OriginalURL)
+			http.Error(w, mes, http.StatusBadRequest)
+			return
+		}
+
+		// валидация ID?
+
+		shortURL, err := h.service.CreateShortURL(string(url.OriginalURL))
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		respURLs = append(respURLs, model.ManyURLResponse{
+			ID: url.ID,
+			ShortURL: shortURL.ShortURL,
+		})
+	}
+
+	respData, err := json.Marshal(&respURLs)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 	}

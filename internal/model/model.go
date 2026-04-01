@@ -9,10 +9,20 @@ type URL struct {
     // ClickCount  int
 }
 
-type RequestJSON struct {
-    URL string `json:"url"`
+type OneURLRequest struct {
+    URL    string `json:"url"`
 }
 
-type ResponseJSON struct {
+type OneURLResponse struct {
     Result string `json:"result"`
+}
+
+type ManyURLRequest struct {
+    ID          string `json:"correlation_id"`
+    OriginalURL string `json:"original_url"`
+}
+
+type ManyURLResponse struct {
+    ID          string `json:"correlation_id"`
+    ShortURL    string `json:"short_url"`
 }
