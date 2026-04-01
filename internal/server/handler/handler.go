@@ -125,11 +125,13 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	reqURLs := []model.ManyURLRequest{}
 	err := json.NewDecoder(r.Body).Decode(&reqURLs)
 	if err != nil {
+		h.sugarLog.Errorf("json-error when reading from body: %v", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	if len(reqURLs) == 0 {
+		h.sugarLog.Error("length of struct reqURLs = 0")
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -138,6 +140,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	for _, url := range reqURLs {
 		if !h.service.IsValidURL(string(url.OriginalURL)) {
 			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", url.ID, url.OriginalURL)
+			h.sugarLog.Error(mes)
 			http.Error(w, mes, http.StatusBadRequest)
 			return
 		}
@@ -146,18 +149,20 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 		shortURL, err := h.service.CreateShortURL(string(url.OriginalURL))
 		if err != nil {
+			h.sugarLog.Errorf("failed to create short url: %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 
 		respURLs = append(respURLs, model.ManyURLResponse{
 			ID: url.ID,
-			ShortURL: shortURL.ShortURL,
+			ShortURL: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
 		})
 	}
 
 	respData, err := json.Marshal(&respURLs)
 	if err != nil {
+		h.sugarLog.Errorf("json-error from Marshal: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 	}
 
