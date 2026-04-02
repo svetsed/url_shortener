@@ -48,19 +48,26 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	shortURL, err := h.service.CreateShortURL(string(origURL))
+	url, err := h.service.CreateShortURL(string(origURL))
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
-	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
+	err = h.service.SaveOneURL(url)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+
+	urlStr := h.cfg.BaseAddress + "/" + url.ShortURL
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(urlStr)))
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
 	w.WriteHeader(http.StatusCreated)
 
-	w.Write([]byte(url))
+	w.Write([]byte(urlStr))
 }
 
 func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +88,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var reqURL model.RequestJSON
+	var reqURL model.OneURLRequest
 	if err := json.Unmarshal(data, &reqURL); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -92,18 +99,91 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shortURL, err := h.service.CreateShortURL(string(reqURL.URL))
+	url, err := h.service.CreateShortURL(string(reqURL.URL))
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
-	res := model.ResponseJSON{
-		Result: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
+	err = h.service.SaveOneURL(url)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	res := model.OneURLResponse{
+		Result: h.cfg.BaseAddress + "/" + url.ShortURL,
 	}
 
 	respData, err := json.Marshal(&res)
 	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(respData)))
+	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
+	w.WriteHeader(http.StatusCreated)
+
+	w.Write(respData)
+}
+
+func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	defer r.Body.Close()
+	reqURLs := []model.ManyURLRequest{}
+	err := json.NewDecoder(r.Body).Decode(&reqURLs)
+	if err != nil {
+		h.sugarLog.Errorf("json-error when reading from body: %v", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if len(reqURLs) == 0 {
+		h.sugarLog.Error("length of struct reqURLs = 0")
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	respURLs := []model.ManyURLResponse{}
+	urlsForSave := make([]*model.URL, 0)
+	for _, reqURL := range reqURLs {
+		if !h.service.IsValidURL(string(reqURL.OriginalURL)) {
+			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.CorrelationID, reqURL.OriginalURL)
+			h.sugarLog.Error(mes)
+			http.Error(w, mes, http.StatusBadRequest)
+			return
+		}
+
+		url, err := h.service.CreateShortURL(string(reqURL.OriginalURL))
+		if err != nil {
+			h.sugarLog.Errorf("failed to create short url: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		urlsForSave = append(urlsForSave, url)
+
+		respURLs = append(respURLs, model.ManyURLResponse{
+			CorrelationID: reqURL.CorrelationID,
+			ShortURL: h.cfg.BaseAddress + "/" + url.ShortURL,
+		})
+	}
+
+	err = h.service.SaveManyURL(urlsForSave)
+	if err != nil {
+		h.sugarLog.Errorf("failed to save many urls: %w", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	respData, err := json.Marshal(&respURLs)
+	if err != nil {
+		h.sugarLog.Errorf("json-error from Marshal: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 	}
 

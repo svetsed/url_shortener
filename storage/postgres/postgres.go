@@ -101,6 +101,37 @@ func (ps *postgresStorage) Save(url *model.URL) error {
     return nil
 }
 
+func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	tx, err := ps.db.BeginTx(ctx, nil)
+    if err != nil {
+        return err
+    }
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO urls (short_url, original_url)
+		VALUES ($1, $2)
+	`
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+        return err
+    }
+	defer stmt.Close()
+
+	for _, url := range newURLs {
+		_, err := stmt.ExecContext(ctx, url.ShortURL, url.OriginalURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

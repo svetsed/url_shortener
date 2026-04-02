@@ -57,12 +57,15 @@ func (s *Service) CreateShortURL(origURL string) (*model.URL, error) {
 		OriginalURL: origURL,
 	}
 
-	err = s.repo.Save(url)
-	if err != nil {
-		return nil, err
-	}
-
 	return url, nil
+}
+
+func (s *Service) SaveOneURL(url *model.URL) error {
+	return s.repo.Save(url)
+}
+
+func (s *Service) SaveManyURL(urls []*model.URL) error { // tx с контекстом
+	return s.repo.SaveManyURL(urls)
 }
 
 func (s *Service) GetOriginalURL(shortURL string) (string, error) {
