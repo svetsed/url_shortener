@@ -153,7 +153,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	urlsForSave := make([]*model.URL, 0)
 	for _, reqURL := range reqURLs {
 		if !h.service.IsValidURL(string(reqURL.OriginalURL)) {
-			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.Correlation_id, reqURL.OriginalURL)
+			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.CorrelationID, reqURL.OriginalURL)
 			h.sugarLog.Error(mes)
 			http.Error(w, mes, http.StatusBadRequest)
 			return
@@ -169,7 +169,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 		urlsForSave = append(urlsForSave, url)
 
 		respURLs = append(respURLs, model.ManyURLResponse{
-			Correlation_id: reqURL.Correlation_id,
+			CorrelationID: reqURL.CorrelationID,
 			ShortURL: h.cfg.BaseAddress + "/" + url.ShortURL,
 		})
 	}
