@@ -94,6 +94,25 @@ func (fs *fileStorage) Save(url *model.URL) error {
 	return nil
 }
 
+func (fs *fileStorage) SaveManyURL(newURLs []*model.URL) error {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	if fs.urls == nil {
+		return storage.ErrorStorageNotInitialized
+	}
+
+	err := fs.encoder.Encode(&newURLs)
+	if err != nil {
+		return err
+	}
+
+	for _, url := range newURLs {
+		fs.urls = append(fs.urls, *url)
+	}
+
+	return nil
+}
+
 func (fs *fileStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()

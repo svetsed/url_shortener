@@ -7,6 +7,9 @@ import (
 	"github.com/svetsed/url_shortener/storage"
 )
 
+var _ storage.Repository = (*MockStorage)(nil)
+
+// need add mutex
 type MockStorage struct {
 	urls map[string]*model.URL
 }
@@ -30,6 +33,26 @@ func (ms *MockStorage) Save(url *model.URL) error {
 		ms.urls[url.ShortURL] = url
 	} else {
 		return fmt.Errorf("duplicate url")
+	}
+
+	return nil
+}
+
+func (ms *MockStorage) SaveManyURL(newURLs []*model.URL) error {
+	if ms.urls == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+	
+	if newURLs == nil {
+		return storage.ErrNoDataForSave
+	}
+
+	for _, url := range newURLs {
+		if _, exist := ms.urls[url.ShortURL]; !exist {
+			ms.urls[url.ShortURL] = url
+		} else {
+			return fmt.Errorf("duplicate url")
+		}
 	}
 
 	return nil

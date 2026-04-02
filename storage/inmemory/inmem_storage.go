@@ -26,11 +26,28 @@ func NewMemoryStorage() *memoryStorage {
 func (ms *memoryStorage) Save(url *model.URL) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	if ms.urls != nil {
-		ms.urls = append(ms.urls, *url)
-		return nil
+
+	if ms.urls == nil {
+		return storage.ErrorStorageNotInitialized
 	}
-	return storage.ErrorStorageNotInitialized
+
+	ms.urls = append(ms.urls, *url)
+	return nil
+}
+
+func (ms *memoryStorage) SaveManyURL(newURLs []*model.URL) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if ms.urls == nil {
+		return storage.ErrorStorageNotInitialized
+	}
+
+	for _, url := range newURLs {
+		ms.urls = append(ms.urls, *url)
+	}
+
+	return nil
 }
 
 func (ms *memoryStorage) GetByShortURL(shortURL string) (*model.URL, error) {

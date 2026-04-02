@@ -18,11 +18,11 @@ type OneURLResponse struct {
 }
 
 type ManyURLRequest struct {
-    ID          string `json:"correlation_id"`
-    OriginalURL string `json:"original_url"`
+    Correlation_id string `json:"correlation_id"`
+    OriginalURL    string `json:"original_url"`
 }
 
 type ManyURLResponse struct {
-    ID          string `json:"correlation_id"`
-    ShortURL    string `json:"short_url"`
+    Correlation_id string `json:"correlation_id"`
+    ShortURL       string `json:"short_url"`
 }

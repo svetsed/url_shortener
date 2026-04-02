@@ -48,19 +48,26 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	shortURL, err := h.service.CreateShortURL(string(origURL))
+	url, err := h.service.CreateShortURL(string(origURL))
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
-	url := h.cfg.BaseAddress + "/" + shortURL.ShortURL
+	err = h.service.SaveOneURL(url)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+
+	urlStr := h.cfg.BaseAddress + "/" + url.ShortURL
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(url)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(urlStr)))
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
 	w.WriteHeader(http.StatusCreated)
 
-	w.Write([]byte(url))
+	w.Write([]byte(urlStr))
 }
 
 func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.Request) {
@@ -92,14 +99,20 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shortURL, err := h.service.CreateShortURL(string(reqURL.URL))
+	url, err := h.service.CreateShortURL(string(reqURL.URL))
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = h.service.SaveOneURL(url)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
 	res := model.OneURLResponse{
-		Result: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
+		Result: h.cfg.BaseAddress + "/" + url.ShortURL,
 	}
 
 	respData, err := json.Marshal(&res)
@@ -137,27 +150,35 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	respURLs := []model.ManyURLResponse{}
-	for _, url := range reqURLs {
-		if !h.service.IsValidURL(string(url.OriginalURL)) {
-			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", url.ID, url.OriginalURL)
+	urlsForSave := make([]*model.URL, 0)
+	for _, reqURL := range reqURLs {
+		if !h.service.IsValidURL(string(reqURL.OriginalURL)) {
+			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.Correlation_id, reqURL.OriginalURL)
 			h.sugarLog.Error(mes)
 			http.Error(w, mes, http.StatusBadRequest)
 			return
 		}
 
-		// валидация ID?
-
-		shortURL, err := h.service.CreateShortURL(string(url.OriginalURL))
+		url, err := h.service.CreateShortURL(string(reqURL.OriginalURL))
 		if err != nil {
 			h.sugarLog.Errorf("failed to create short url: %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 
+		urlsForSave = append(urlsForSave, url)
+
 		respURLs = append(respURLs, model.ManyURLResponse{
-			ID: url.ID,
-			ShortURL: h.cfg.BaseAddress + "/" + shortURL.ShortURL,
+			Correlation_id: reqURL.Correlation_id,
+			ShortURL: h.cfg.BaseAddress + "/" + url.ShortURL,
 		})
+	}
+
+	err = h.service.SaveManyURL(urlsForSave)
+	if err != nil {
+		h.sugarLog.Errorf("failed to save many urls: %w", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
 	}
 
 	respData, err := json.Marshal(&respURLs)

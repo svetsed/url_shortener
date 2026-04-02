@@ -12,11 +12,13 @@ var (
 	ErrorNotSupported 		   = errors.New("not supported")
 	ErrorStorageNotInitialized = errors.New("storage not initialized")
 	ErrConflict                = errors.New("url already exists")
+	ErrNoDataForSave		   = errors.New("no data for save")
 
 )
 
 type Repository interface {
 	Save(url *model.URL) error
+	SaveManyURL(newURLs []*model.URL) error
 	GetByShortURL(shortURL string) (*model.URL, error)
 	GetByOringURL(origURL string) (*model.URL, error)
 }
