@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
+	"github.com/svetsed/url_shortener/storage"
 	"go.uber.org/zap"
 )
 
@@ -43,29 +45,42 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !h.service.IsValidURL(string(origURL)) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	url, err := h.service.CreateShortURL(string(origURL))
+	var url *model.URL
+	status := http.StatusCreated
+	skipCreating := false
+	urlExist, err := h.service.IsValidURL(string(origURL))
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
+		if errors.Is(err, storage.ErrURLAlreadyExist) {
+			url = urlExist
+			status = http.StatusConflict
+			skipCreating = true
+		} else if !errors.Is(err, storage.ErrorNotFound) {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
 	}
 
-	err = h.service.SaveOneURL(url)
-	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
-	}
+	if !skipCreating {
+		newURL, err := h.service.CreateShortURL(string(origURL))
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
 
+		err = h.service.SaveOneURL(newURL)
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		url = newURL
+	}
 
 	urlStr := h.cfg.BaseAddress + "/" + url.ShortURL
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(urlStr)))
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 
 	w.Write([]byte(urlStr))
 }
@@ -94,21 +109,35 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if !h.service.IsValidURL(string(reqURL.URL)) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+	var url *model.URL
+	status := http.StatusCreated
+	skipCreating := false
+	urlExist, err := h.service.IsValidURL(string(reqURL.URL))
+	if err != nil {
+		if errors.Is(err, storage.ErrURLAlreadyExist) {
+			url = urlExist
+			status = http.StatusConflict
+			skipCreating = true
+		} else if !errors.Is(err, storage.ErrorNotFound) {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
 	}
 
-	url, err := h.service.CreateShortURL(string(reqURL.URL))
-	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
-	}
+	if !skipCreating {
+		newURL, err := h.service.CreateShortURL(string(reqURL.URL))
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
 
-	err = h.service.SaveOneURL(url)
-	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
+		err = h.service.SaveOneURL(newURL)
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		url = newURL
 	}
 
 	res := model.OneURLResponse{
@@ -123,7 +152,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(respData)))
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 
 	w.Write(respData)
 }
@@ -151,22 +180,34 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 	respURLs := []model.ManyURLResponse{}
 	urlsForSave := make([]*model.URL, 0)
+	skipCreating := false
 	for _, reqURL := range reqURLs {
-		if !h.service.IsValidURL(string(reqURL.OriginalURL)) {
-			mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.CorrelationID, reqURL.OriginalURL)
-			h.sugarLog.Error(mes)
-			http.Error(w, mes, http.StatusBadRequest)
-			return
-		}
-
-		url, err := h.service.CreateShortURL(string(reqURL.OriginalURL))
+		var url *model.URL
+		urlExist, err := h.service.IsValidURL(string(reqURL.OriginalURL))
 		if err != nil {
-			h.sugarLog.Errorf("failed to create short url: %v", err)
-			http.Error(w, "server error", http.StatusInternalServerError)
-			return
+			if errors.Is(err, storage.ErrURLAlreadyExist) {
+				skipCreating = true
+				url = urlExist
+			} else if !errors.Is(err, storage.ErrorNotFound) {
+				mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.CorrelationID, reqURL.OriginalURL)
+				h.sugarLog.Error(mes)
+				http.Error(w, mes, http.StatusBadRequest)
+				return
+			}
 		}
 
-		urlsForSave = append(urlsForSave, url)
+		if !skipCreating {
+			skipCreating = false
+			newURL, err := h.service.CreateShortURL(string(reqURL.OriginalURL))
+			if err != nil {
+				h.sugarLog.Errorf("failed to create short url: %v", err)
+				http.Error(w, "server error", http.StatusInternalServerError)
+				return
+			}
+
+			url = newURL
+			urlsForSave = append(urlsForSave, url)
+		}
 
 		respURLs = append(respURLs, model.ManyURLResponse{
 			CorrelationID: reqURL.CorrelationID,
@@ -176,7 +217,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 	err = h.service.SaveManyURL(urlsForSave)
 	if err != nil {
-		h.sugarLog.Errorf("failed to save many urls: %w", err)
+		h.sugarLog.Errorf("failed to save many urls: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}

@@ -110,8 +110,8 @@ func TestCreateShortURLHandler(t *testing.T) {
 		{
 			name: "existing URL",
 			want: want{
-				code:        http.StatusBadRequest,
-				response:    "bad request",
+				code:        http.StatusConflict,
+				response:    "http://localhost:8080/existing123",
 				contentType: "text/plain; charset=utf-8",
 			},
 			method: http.MethodPost,
