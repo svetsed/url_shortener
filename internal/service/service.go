@@ -79,26 +79,26 @@ func (s *Service) GetOriginalURL(shortURL string) (string, error) {
 
 // IsValidURL checks for an empty value, tries to parse the URL struct
 // and also checks that such a URL has not previosly been saved to the database.
-func (s *Service) IsValidURL(someURL string) bool {
+func (s *Service) IsValidURL(someURL string) (*model.URL, error) {
 	if someURL == "" {
-		return false
+		return nil, fmt.Errorf("empty url")
 	}
 
 	u, err := url.ParseRequestURI(someURL)
 	if err != nil {
-		return false
+		return nil, fmt.Errorf("error parse url: %w", err)
 	}
 
 	if !u.IsAbs() {
-		return false
+		return nil, fmt.Errorf("empty scheme")
 	}
 	
-	_, err = s.repo.GetByOringURL(someURL)
-	if err != nil && errors.Is(err, storage.ErrorNotFound) {
-		return true
+	url, err := s.repo.GetByOringURL(someURL)
+	if err != nil {
+		return nil, err
 	}
 
-	return false
+	return url, storage.ErrURLAlreadyExist
 }
 
 func generateRandomString(length int) (string, error) {

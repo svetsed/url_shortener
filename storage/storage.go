@@ -11,7 +11,7 @@ var (
 	ErrorNotFound 			   = errors.New("not found")
 	ErrorNotSupported 		   = errors.New("not supported")
 	ErrorStorageNotInitialized = errors.New("storage not initialized")
-	ErrConflict                = errors.New("url already exists")
+	ErrURLAlreadyExist         = errors.New("url already exists")
 	ErrNoDataForSave		   = errors.New("no data for save")
 
 )
