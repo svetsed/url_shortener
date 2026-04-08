@@ -136,3 +136,17 @@ func (fs *fileStorage) GetByOringURL(origURL string) (*model.URL, error) {
 
 	return nil, storage.ErrorNotFound
 }
+
+func (fs *fileStorage) GetUserURLs(userID string) ([]model.URL, error) {
+	userURLs := make([]model.URL, 0)
+	fs.mu.RLock()
+	defer fs.mu.RUnlock()
+
+	for _, url := range fs.urls {
+		if url.UserID == userID {
+			userURLs = append(userURLs, url)
+		}
+	}
+
+	return userURLs, nil
+}

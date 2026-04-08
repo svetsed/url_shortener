@@ -73,3 +73,17 @@ func (ms *memoryStorage) GetByOringURL(origURL string) (*model.URL, error) {
 
 	return nil, storage.ErrorNotFound
 }
+
+func (ms *memoryStorage) GetUserURLs(userID string) ([]model.URL, error) {
+	userURLs := make([]model.URL, 0)
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	for _, url := range ms.urls {
+		if url.UserID == userID {
+			userURLs = append(userURLs, url)
+		}
+	}
+
+	return userURLs, nil
+}

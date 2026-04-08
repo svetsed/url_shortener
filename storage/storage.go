@@ -21,6 +21,7 @@ type Repository interface {
 	SaveManyURL(newURLs []*model.URL) error
 	GetByShortURL(shortURL string) (*model.URL, error)
 	GetByOringURL(origURL string) (*model.URL, error)
+	GetUserURLs(userID string) ([]model.URL, error)
 }
 
 type Pinger interface {

@@ -57,7 +57,8 @@ func (ps *postgresStorage) createDB(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS urls (
 			id SERIAL PRIMARY KEY,
 			short_url VARCHAR(255) UNIQUE NOT NULL,
-			original_url TEXT NOT NULL
+			original_url TEXT NOT NULL,
+			user_id UUID NOT NULL
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_irls_short ON urls(short_url);
@@ -88,11 +89,11 @@ func (ps *postgresStorage) Save(url *model.URL) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO urls (short_url, original_url)
-		VALUES ($1, $2)
+		INSERT INTO urls (short_url, original_url, user_id)
+		VALUES ($1, $2, $3)
 	`
 
-	_, err := ps.db.ExecContext(ctx, query, url.ShortURL, url.OriginalURL)
+	_, err := ps.db.ExecContext(ctx, query, url.ShortURL, url.OriginalURL, url.UserID)
 
 	if err != nil {
 		return fmt.Errorf("failed to save url: %w", err)
@@ -112,8 +113,8 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO urls (short_url, original_url)
-		VALUES ($1, $2)
+		INSERT INTO urls (short_url, original_url, user_id)
+		VALUES ($1, $2, $3)
 	`
 
 	stmt, err := tx.PrepareContext(ctx, query)
@@ -123,7 +124,7 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 	defer stmt.Close()
 
 	for _, url := range newURLs {
-		_, err := stmt.ExecContext(ctx, url.ShortURL, url.OriginalURL)
+		_, err := stmt.ExecContext(ctx, url.ShortURL, url.OriginalURL, url.UserID)
 		if err != nil {
 			return err
 		}
@@ -137,7 +138,7 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	defer cancel()
 
 	query := `
-		SELECT id, short_url, original_url
+		SELECT id, short_url, original_url, user_id
 		FROM urls
 		WHERE short_url = $1
 	`
@@ -148,6 +149,7 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 		&url.ID,
 		&url.ShortURL,
 		&url.OriginalURL,
+		&url.UserID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -166,7 +168,7 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 	defer cancel()
 
 	query := `
-		SELECT id, short_url, original_url
+		SELECT id, short_url, original_url, user_id
 		FROM urls 
 		WHERE original_url = $1
 	`
@@ -175,6 +177,7 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 		&url.ID,
 		&url.ShortURL,
 		&url.OriginalURL,
+		&url.UserID,
 	)
 
 	if  err == sql.ErrNoRows {
@@ -186,6 +189,43 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 	}
 
     return url, nil
+}
+
+func (ps *postgresStorage) GetUserURLs(userID string) ([]model.URL, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) 
+	defer cancel()
+
+	rows, err := ps.db.QueryContext(ctx, 
+		"SELECT id, short_url, original_url, user_id FROM urls WHERE user_id = $1", 
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get urls for user_id=%s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	userURLs := make([]model.URL, 0)
+	for rows.Next() {
+		var url model.URL
+
+		err := rows.Scan(
+			&url.ID,
+            &url.ShortURL,
+            &url.OriginalURL,
+            &url.UserID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan failed for user_id=%s: %w", userID, err)
+		}
+
+		userURLs = append(userURLs, url)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+
+	return userURLs, nil
 }
 
 

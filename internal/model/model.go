@@ -2,6 +2,7 @@ package model
 
 type URL struct {
     ID          string `json:"uuid"`
+    UserID      string `json:"user_id"`
     OriginalURL string `json:"original_url"`
     ShortURL    string `json:"short_url"`
     // CreatedAt   time.Time
@@ -19,10 +20,10 @@ type OneURLResponse struct {
 
 type ManyURLRequest struct {
     CorrelationID string `json:"correlation_id"`
-    OriginalURL    string `json:"original_url"`
+    OriginalURL   string `json:"original_url"`
 }
 
 type ManyURLResponse struct {
     CorrelationID string `json:"correlation_id"`
-    ShortURL       string `json:"short_url"`
+    ShortURL      string `json:"short_url"`
 }

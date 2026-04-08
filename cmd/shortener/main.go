@@ -82,11 +82,12 @@ func main() {
 
 	r.Post("/", h.CreateShortURLHandler)
 	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
+	r.Post("/api/shorten/batch", h.CreateShortURLsBatchHandler)
+	r.Get("/api/user/urls", h.GetUserURLs)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 	r.Get("/ping", h.HealthCheckDBHandler)
-	r.Post("/api/shorten/batch", h.CreateShortURLsBatchHandler)
 
-	sugarLog.Infof("Server starts with: server address - %s, base url - %s", cfg.LoadAddress, cfg.BaseAddress)
+	sugarLog.Infof("server starts with: server address - %s, base url - %s", cfg.LoadAddress, cfg.BaseAddress)
 
 	sugarLog.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
 }
