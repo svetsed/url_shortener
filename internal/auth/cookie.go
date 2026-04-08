@@ -45,12 +45,12 @@ func VerifySignedUserID(signedValue string) (string, bool) {
 	return userID, signature == expectedParts[1]
 }
 
-func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, error) {
+func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, bool, error) {
 	cookie, err := r.Cookie("user_id")
 	if err == nil {
 		userID, ok := VerifySignedUserID(cookie.Value)
 		if ok {
-			return userID, nil // Валидная кука, возвращаем userID
+			return userID, false, nil // Валидная кука, возвращаем userID
 		}
 	}
 
@@ -58,7 +58,7 @@ func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, error) {
 
 	signedValue, err := CreateSignedUserID(newUserID)
 	if err != nil {
-		return "", fmt.Errorf("failed to create userID")
+		return "", true, fmt.Errorf("failed to create userID")
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -67,5 +67,5 @@ func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, error) {
 		Path : "/",
 	})
 
-	return newUserID, nil
+	return newUserID, true, nil
 }

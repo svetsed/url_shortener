@@ -40,7 +40,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	
-	userID, err := auth.GetOrCreateUserID(w, r)
+	userID, _, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -105,7 +105,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	userID, err := auth.GetOrCreateUserID(w, r)
+	userID, _, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -190,7 +190,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	
-	userID, err := auth.GetOrCreateUserID(w, r)
+	userID, _, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -274,14 +274,14 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 // Get /api/user/urls
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("user_id")
+	userID, isNew, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
-	userID, ok := auth.VerifySignedUserID(cookie.Value)
-	if !ok {
+	if isNew {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
