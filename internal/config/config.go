@@ -16,7 +16,7 @@ type Config struct {
 	BaseAddress 	string	`env:"BASE_URL"`
 	FileStoragePath string  `env:"FILE_STORAGE_PATH"` 	// may empty value
 	DatabaseDSN		string	`env:"DATABASE_DSN"`		// may empty value
-	CookieSecret	string	`env:"SECRET_COOKIE,notEmpty"`
+	CookieSecret	string	`env:"SECRET_COOKIE"`
 }
 
 func NewDefaultConfig() *Config {

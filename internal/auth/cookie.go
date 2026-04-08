@@ -15,7 +15,7 @@ import (
 func CreateSignedUserID(userID string) (string, error) {
 	secretKey := os.Getenv("SECRET_COOKIE")
 	if secretKey == "" {
-		return "", fmt.Errorf("secret key don't set")
+		secretKey = "default-secret-key"
 	}
 
 	h := hmac.New(sha256.New, []byte(secretKey))
