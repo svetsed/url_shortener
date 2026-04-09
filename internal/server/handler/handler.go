@@ -274,28 +274,11 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 // Get /api/user/urls
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	cookies := r.Cookies()
-	if len(cookies) == 0 {
-		if _, err := auth.CreateNewUser(w); err != nil {
-			h.sugarLog.Errorf("error from auth.CreateNewUser(w) cookie=nil: %v", err)
-			http.Error(w, "server error", http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := auth.GetUserIDFromCookie(r)
+	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
-		tmp, err := auth.CreateNewUser(w)
-		if err != nil {
-			h.sugarLog.Errorf("error from auth.CreateNewUser(w): %v", err)
-			http.Error(w, "server error", http.StatusInternalServerError)
-			return
-		}
-
-		userID = tmp
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
 	}
 
 	userURLs, err := h.service.GetUserURLs(userID)
