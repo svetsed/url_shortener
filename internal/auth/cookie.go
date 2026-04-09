@@ -4,12 +4,17 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ErrNoCookies = errors.New("no cookies")
 )
 
 func CreateSignedUserID(userID string) (string, error) {
@@ -45,27 +50,48 @@ func VerifySignedUserID(signedValue string) (string, bool) {
 	return userID, signature == expectedParts[1]
 }
 
-func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, bool, error) {
-	cookie, err := r.Cookie("user_id")
+func CreateNewUser(w http.ResponseWriter) (string, error) {
+    newUserID := uuid.New().String()
+    
+    signedValue, err := CreateSignedUserID(newUserID)
+    if err != nil {
+        return "", fmt.Errorf("failed to create userID: %w", err)
+    }
+    
+    http.SetCookie(w, &http.Cookie{
+        Name:     "user_id",
+        Value:    signedValue,
+        Path:     "/",
+        HttpOnly: true,
+    })
+    
+    return newUserID, nil
+}
+
+func GetUserIDFromCookie(r *http.Request) (string, error) {
+    cookie, err := r.Cookie("user_id")
+    if err != nil {
+        return "", fmt.Errorf("cookie user_id not found")
+    }
+    
+    userID, ok := VerifySignedUserID(cookie.Value)
+    if !ok {
+        return "", fmt.Errorf("invalid cookie signature")
+    }
+    
+    return userID, nil
+}
+
+func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, error) {
+	userID, err := GetUserIDFromCookie(r)
 	if err == nil {
-		userID, ok := VerifySignedUserID(cookie.Value)
-		if ok {
-			return userID, false, nil // Валидная кука, возвращаем userID
-		}
+		return userID, nil
 	}
 
-	newUserID := uuid.New().String()
-
-	signedValue, err := CreateSignedUserID(newUserID)
+	newUserID, err := CreateNewUser(w)
 	if err != nil {
-		return "", true, fmt.Errorf("failed to create userID")
+		return "", err
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name : "user_id",
-		Value: signedValue,
-		Path : "/",
-	})
-
-	return newUserID, true, nil
+	return newUserID, nil
 }

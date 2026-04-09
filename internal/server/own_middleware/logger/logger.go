@@ -57,6 +57,7 @@ func LoggingMiddleware(sugarLog *zap.SugaredLogger) func(http.Handler) http.Hand
 				"status", respData.status,
 				"duration", duration,
 				"size", respData.size,
+				// "cookie", lw.Header().Get("Set-Cookie"),
 			)
 		})
 	}

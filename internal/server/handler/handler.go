@@ -39,8 +39,8 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
-	userID, _, err := auth.GetOrCreateUserID(w, r)
+
+	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -105,7 +105,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	userID, _, err := auth.GetOrCreateUserID(w, r)
+	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -190,7 +190,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	
-	userID, _, err := auth.GetOrCreateUserID(w, r)
+	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -274,16 +274,28 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 // Get /api/user/urls
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	userID, isNew, err := auth.GetOrCreateUserID(w, r)
-	if err != nil {
-		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
-		http.Error(w, "server error", http.StatusInternalServerError)
+	cookies := r.Cookies()
+	if len(cookies) == 0 {
+		if _, err := auth.CreateNewUser(w); err != nil {
+			h.sugarLog.Errorf("error from auth.CreateNewUser(w) cookie=nil: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	if isNew {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	userID, err := auth.GetUserIDFromCookie(r)
+	if err != nil {
+		tmp, err := auth.CreateNewUser(w)
+		if err != nil {
+			h.sugarLog.Errorf("error from auth.CreateNewUser(w): %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		userID = tmp
 	}
 
 	userURLs, err := h.service.GetUserURLs(userID)
