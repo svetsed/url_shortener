@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/svetsed/url_shortener/internal/auth"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
@@ -32,12 +33,20 @@ func NewHandler(service *service.Service, cfg *config.Config, sugarLog *zap.Suga
 	}
 }
 
+// Post /
 func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
+	userID, err := auth.GetOrCreateUserID(w, r)
+	if err != nil {
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
 	defer r.Body.Close()
 	origURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -45,7 +54,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var url *model.URL
+	var url *model.URL 
 	status := http.StatusCreated
 	skipCreating := false
 	urlExist, err := h.service.IsValidURL(string(origURL))
@@ -63,12 +72,16 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	if !skipCreating {
 		newURL, err := h.service.CreateShortURL(string(origURL))
 		if err != nil {
+			h.sugarLog.Errorf("error from service.CreateShortURL(): %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 
+		newURL.UserID = userID
+
 		err = h.service.SaveOneURL(newURL)
 		if err != nil {
+			h.sugarLog.Errorf("error from service.SaveOneURL(): %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
@@ -85,9 +98,17 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte(urlStr))
 }
 
+// Post /api/shorten
 func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, err := auth.GetOrCreateUserID(w, r)
+	if err != nil {
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 	
@@ -127,12 +148,16 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 	if !skipCreating {
 		newURL, err := h.service.CreateShortURL(string(reqURL.URL))
 		if err != nil {
+			h.sugarLog.Errorf("error from service.CreateShortURL(): %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 
+		newURL.UserID = userID
+
 		err = h.service.SaveOneURL(newURL)
 		if err != nil {
+			h.sugarLog.Errorf("error from service.SaveOneURL(): %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
@@ -146,6 +171,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 
 	respData, err := json.Marshal(&res)
 	if err != nil {
+		h.sugarLog.Errorf("error from json.Marshal(&OneURLResponse): %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 	}
 
@@ -157,15 +183,23 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 	w.Write(respData)
 }
 
+// Post /api/shorten/batch
 func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	
+	userID, err := auth.GetOrCreateUserID(w, r)
+	if err != nil {
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
 	defer r.Body.Close()
 	reqURLs := []model.ManyURLRequest{}
-	err := json.NewDecoder(r.Body).Decode(&reqURLs)
+	err = json.NewDecoder(r.Body).Decode(&reqURLs)
 	if err != nil {
 		h.sugarLog.Errorf("json-error when reading from body: %v", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -206,6 +240,8 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 			}
 
 			url = newURL
+			url.UserID = userID
+
 			urlsForSave = append(urlsForSave, url)
 		}
 
@@ -236,6 +272,41 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	w.Write(respData)
 }
 
+// Get /api/user/urls
+func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
+	userID, err := auth.GetOrCreateUserID(w, r)
+	if err != nil {
+		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	userURLs, err := h.service.GetUserURLs(userID)
+	if err != nil {
+		h.sugarLog.Errorf("error from service.GetUserURLs(userID): %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(userURLs) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	response := []map[string]string{}
+	for _, url := range userURLs {
+		response = append(response, map[string]string{
+			"short_url":    h.cfg.BaseAddress + "/" + url.ShortURL,
+            "original_url": url.OriginalURL,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+
+// Get /{id}
 func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -261,6 +332,7 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
 }
 
+// Get /ping
 func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 	if h.service == nil {
 		h.sugarLog.Error("service not initialized")
@@ -279,4 +351,3 @@ func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
-

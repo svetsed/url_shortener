@@ -77,6 +77,10 @@ func (s *Service) GetOriginalURL(shortURL string) (string, error) {
 	return url.OriginalURL, nil
 }
 
+func (s *Service) GetUserURLs(userID string) ([]model.URL, error) {
+	return s.repo.GetUserURLs(userID)
+}
+
 // IsValidURL checks for an empty value, tries to parse the URL struct
 // and also checks that such a URL has not previosly been saved to the database.
 func (s *Service) IsValidURL(someURL string) (*model.URL, error) {
