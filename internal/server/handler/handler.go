@@ -35,6 +35,11 @@ func NewHandler(service *service.Service, cfg *config.Config, sugarLog *zap.Suga
 
 // Post /
 func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -95,6 +100,11 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 
 // Post /api/shorten
 func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -175,6 +185,11 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 
 // Post /api/shorten/batch
 func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -261,6 +276,11 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 // Get /api/user/urls
 func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -295,6 +315,11 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 // Get /{id}
 func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	shortURL := chi.URLParam(r, "id")
 	if shortURL == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -322,6 +347,11 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 
 // Get /ping
 func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	if h.service == nil {
 		h.sugarLog.Error("service not initialized")
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -343,6 +373,11 @@ func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 
 // Delete /api/user/urls
 func (h *Handler) DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetUserIDFromCookie(r)
 	if err != nil {
 		auth.CreateNewUser(w)
