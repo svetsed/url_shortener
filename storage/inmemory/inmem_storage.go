@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/svetsed/url_shortener/internal/model"
@@ -86,4 +87,26 @@ func (ms *memoryStorage) GetUserURLs(userID string) ([]model.URL, error) {
 	}
 
 	return userURLs, nil
+}
+
+func (ms *memoryStorage) MarkAsDeleted(shortURLs []string, userID string) error {
+    if shortURLs == nil {
+		return fmt.Errorf("send nil slice with shortURLs")
+	}
+
+	ms.mu.Lock()
+    defer ms.mu.Unlock()
+    
+	toDelete := make(map[string]bool)
+	for _, shortURL := range shortURLs {
+		toDelete[shortURL] = true
+	}
+
+	for i, url := range ms.urls {
+		if toDelete[url.ShortURL] && url.UserID == userID {
+			ms.urls[i].NeedDelete = true
+		}
+	}
+
+    return nil
 }

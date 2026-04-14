@@ -79,7 +79,12 @@ func (ms *MockStorage) GetByOringURL(origURL string) (*model.URL, error) {
 func (ms *MockStorage) GetUserURLs(userID string) ([]model.URL, error) {
 	// TODO
 	return nil, nil
-} 
+}
+
+func (ms *MockStorage) 	MarkAsDeleted(shortURLs []string, userID string) error {
+	// TODO
+	return nil
+}
 
 func (ms *MockStorage) Close() error {
 	return nil

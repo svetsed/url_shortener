@@ -13,6 +13,7 @@ var (
 	ErrorStorageNotInitialized = errors.New("storage not initialized")
 	ErrURLAlreadyExist         = errors.New("url already exists")
 	ErrNoDataForSave		   = errors.New("no data for save")
+	ErrNothingToDelete		   = errors.New("nothing to delete")
 
 )
 
@@ -22,6 +23,7 @@ type Repository interface {
 	GetByShortURL(shortURL string) (*model.URL, error)
 	GetByOringURL(origURL string) (*model.URL, error)
 	GetUserURLs(userID string) ([]model.URL, error)
+	MarkAsDeleted(shortURLs []string, userID string) error
 }
 
 type Pinger interface {

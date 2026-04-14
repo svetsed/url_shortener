@@ -19,7 +19,7 @@ type postgresStorage struct {
 	sugarLog *zap.SugaredLogger
 }
 
-func NewPostgresStorage(dsn string) (*postgresStorage, error) {
+func NewPostgresStorage(dsn string, sugarLog *zap.SugaredLogger) (*postgresStorage, error) {
 	if dsn == "" {
         return nil, fmt.Errorf("database DSN is empty")
     }
@@ -42,7 +42,7 @@ func NewPostgresStorage(dsn string) (*postgresStorage, error) {
 		return nil, err
 	}
 
-	storage := &postgresStorage{db: db}
+	storage := &postgresStorage{db: db, sugarLog: sugarLog}
 
 	if err := storage.createDB(ctx); err != nil {
 		db.Close()
@@ -58,11 +58,13 @@ func (ps *postgresStorage) createDB(ctx context.Context) error {
 			id SERIAL PRIMARY KEY,
 			short_url VARCHAR(255) UNIQUE NOT NULL,
 			original_url TEXT NOT NULL,
-			user_id UUID NOT NULL
+			user_id UUID NOT NULL,
+			is_deleted BOOLEAN DEFAULT FALSE
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_irls_short ON urls(short_url);
 		CREATE INDEX IF NOT EXISTS idx_urls_original ON urls(original_url);
+		CREATE INDEX IF NOT EXISTS idx_urls_is_deleted ON urls(is_deleted);
 	`
 	// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 
@@ -90,7 +92,7 @@ func (ps *postgresStorage) Save(url *model.URL) error {
 
 	query := `
 		INSERT INTO urls (short_url, original_url, user_id)
-		VALUES ($1, $2, $3)
+		VALUES ($1, $2, $3);
 	`
 
 	_, err := ps.db.ExecContext(ctx, query, url.ShortURL, url.OriginalURL, url.UserID)
@@ -114,7 +116,7 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 
 	query := `
 		INSERT INTO urls (short_url, original_url, user_id)
-		VALUES ($1, $2, $3)
+		VALUES ($1, $2, $3);
 	`
 
 	stmt, err := tx.PrepareContext(ctx, query)
@@ -138,9 +140,9 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	defer cancel()
 
 	query := `
-		SELECT id, short_url, original_url, user_id
+		SELECT *
 		FROM urls
-		WHERE short_url = $1
+		WHERE short_url = $1;
 	`
 
 	url := &model.URL{}
@@ -150,13 +152,16 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 		&url.ShortURL,
 		&url.OriginalURL,
 		&url.UserID,
+		&url.NeedDelete,
 	)
 
 	if err == sql.ErrNoRows {
+		ps.sugarLog.Infof("GetByShortURL: was error storage.ErrorNotFound; shortURL= %s", shortURL)
 		return nil, storage.ErrorNotFound
 	}
 
 	if err != nil {
+		ps.sugarLog.Errorf("GetByShortURL: was error %w; shortURL= %s", err, shortURL)
 		return nil, fmt.Errorf("failed to get by short url: %w", err)
 	}
 
@@ -167,24 +172,29 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) 
 	defer cancel()
 
+	// переделать на несколько ссылок
 	query := `
-		SELECT id, short_url, original_url, user_id
+		SELECT *
 		FROM urls 
-		WHERE original_url = $1
+		WHERE original_url = $1;
 	`
+
 	url := &model.URL{}
 	err := ps.db.QueryRowContext(ctx, query, origURL).Scan(
 		&url.ID,
 		&url.ShortURL,
 		&url.OriginalURL,
 		&url.UserID,
+		&url.NeedDelete,
 	)
 
 	if  err == sql.ErrNoRows {
+		ps.sugarLog.Infof("GetByOringURL: was error storage.ErrorNotFound; origURL= %s", origURL)
 		return nil, storage.ErrorNotFound
 	}
 
 	if err != nil {
+		ps.sugarLog.Errorf("GetByOringURL: was error %w; origURL= %s", err, origURL)
 		return nil, fmt.Errorf("failed to get by original url: %w", err)
 	}
 
@@ -226,6 +236,29 @@ func (ps *postgresStorage) GetUserURLs(userID string) ([]model.URL, error) {
     }
 
 	return userURLs, nil
+}
+
+func (ps *postgresStorage) MarkAsDeleted(shortURLs []string, userID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+
+	query := `
+        UPDATE urls 
+        SET is_deleted = true 
+        WHERE short_url = ANY($1) AND user_id = $2 AND is_deleted = false
+    `
+
+	result, err := ps.db.ExecContext(ctx, query, shortURLs, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAff, _ := result.RowsAffected()
+	if rowsAff == 0 {
+		return storage.ErrNothingToDelete
+	}
+
+	return nil
 }
 
 
