@@ -36,7 +36,7 @@ func main() {
 
 	switch {
 	case cfg.DatabaseDSN != "":
-		pg, err := postgres.NewPostgresStorage(cfg.DatabaseDSN)
+		pg, err := postgres.NewPostgresStorage(cfg.DatabaseDSN, sugarLog)
 		if err != nil {
 			sugarLog.Fatalf("postgres storage initialization error: %v", err)
 		}
@@ -83,9 +83,10 @@ func main() {
 	r.Post("/", h.CreateShortURLHandler)
 	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
 	r.Post("/api/shorten/batch", h.CreateShortURLsBatchHandler)
-	r.Get("/api/user/urls", h.GetUserURLs)
+	r.Get("/api/user/urls", h.GetUserURLsHandler)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 	r.Get("/ping", h.HealthCheckDBHandler)
+	r.Delete("/api/user/urls", h.DeleteUserURLsHandler)
 
 	sugarLog.Infof("server starts with: server address - %s, base url - %s", cfg.LoadAddress, cfg.BaseAddress)
 

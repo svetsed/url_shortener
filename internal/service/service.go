@@ -68,17 +68,21 @@ func (s *Service) SaveManyURL(urls []*model.URL) error { // tx с контекс
 	return s.repo.SaveManyURL(urls)
 }
 
-func (s *Service) GetOriginalURL(shortURL string) (string, error) {
+func (s *Service) GetOriginalURL(shortURL string) (*model.URL, error) {
 	url, err := s.repo.GetByShortURL(shortURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return url.OriginalURL, nil
+	return url, nil
 }
 
 func (s *Service) GetUserURLs(userID string) ([]model.URL, error) {
 	return s.repo.GetUserURLs(userID)
+}
+
+func (s *Service) MarkAsDeleted(shortURLs []string, userID string) error {
+	return s.repo.MarkAsDeleted(shortURLs, userID)
 }
 
 // IsValidURL checks for an empty value, tries to parse the URL struct

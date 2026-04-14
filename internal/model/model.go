@@ -5,6 +5,7 @@ type URL struct {
     UserID      string `json:"user_id"`
     OriginalURL string `json:"original_url"`
     ShortURL    string `json:"short_url"`
+    NeedDelete  bool   `json:"is_deleted"`
     // CreatedAt   time.Time
     // ExpiresAt   *time.Time
     // ClickCount  int

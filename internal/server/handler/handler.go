@@ -189,7 +189,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -212,26 +212,28 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	respURLs := []model.ManyURLResponse{}
+	respURLs := make([]model.ManyURLResponse, 0, len(reqURLs))
 	urlsForSave := make([]*model.URL, 0)
 	skipCreating := false
 	for _, reqURL := range reqURLs {
-		var url *model.URL
+		skipCreating = false
+		var url model.URL
 		urlExist, err := h.service.IsValidURL(string(reqURL.OriginalURL))
 		if err != nil {
 			if errors.Is(err, storage.ErrURLAlreadyExist) {
 				skipCreating = true
-				url = urlExist
+				url = *urlExist
 			} else if !errors.Is(err, storage.ErrorNotFound) {
 				mes := fmt.Sprintf("bad request: url with correlation_id = %s is not valid (url = %s)", reqURL.CorrelationID, reqURL.OriginalURL)
 				h.sugarLog.Error(mes)
 				http.Error(w, mes, http.StatusBadRequest)
 				return
 			}
+
+			h.sugarLog.Info(err)
 		}
 
 		if !skipCreating {
-			skipCreating = false
 			newURL, err := h.service.CreateShortURL(string(reqURL.OriginalURL))
 			if err != nil {
 				h.sugarLog.Errorf("failed to create short url: %v", err)
@@ -239,10 +241,10 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 				return
 			}
 
-			url = newURL
+			url = *newURL
 			url.UserID = userID
 
-			urlsForSave = append(urlsForSave, url)
+			urlsForSave = append(urlsForSave, &url)
 		}
 
 		respURLs = append(respURLs, model.ManyURLResponse{
@@ -273,7 +275,12 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 }
 
 // Get /api/user/urls
-func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID, err := auth.GetOrCreateUserID(w, r)
 	if err != nil {
 		h.sugarLog.Errorf("error from auth.GetOrCreateUserID(): %v", err)
@@ -326,14 +333,25 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if foundOrigURL.NeedDelete {
+		http.Error(w, "url has been removed", http.StatusGone)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(foundOrigURL)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(foundOrigURL.OriginalURL)))
 	w.Header().Set("X-Request-ID", middleware.GetReqID(r.Context()))
-	http.Redirect(w, r, foundOrigURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, foundOrigURL.OriginalURL, http.StatusTemporaryRedirect)
 }
+
 
 // Get /ping
 func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	if h.service == nil {
 		h.sugarLog.Error("service not initialized")
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -350,4 +368,50 @@ func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+
+// Delete /api/user/urls
+func (h *Handler) DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, err := auth.GetUserIDFromCookie(r)
+	if err != nil {
+		auth.CreateNewUser(w)
+		h.sugarLog.Errorf("error from auth.GetUserIDFromCookie(r): %v", err)
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
+
+	defer r.Body.Close()
+
+	shortURLs := []string{}
+	err = json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		h.sugarLog.Errorf("json-error when reading from body: %v", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if len(shortURLs) == 0 {
+		h.sugarLog.Error("length of slice with shortURLs = 0")
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+        err := h.service.MarkAsDeleted(shortURLs, userID)
+        if err != nil {
+            h.sugarLog.Errorf("failed to mark URLs as deleted for user %s: %v", userID, err)
+        } else {
+            h.sugarLog.Infof("successfully marked %d URLs as deleted for user %s", len(shortURLs), userID)
+        }
+    }()
+
+	w.WriteHeader(http.StatusAccepted)
+
+	// когда-то удаляем
 }
