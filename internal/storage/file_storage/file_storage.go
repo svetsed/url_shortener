@@ -8,28 +8,28 @@ import (
 	"sync"
 
 	"github.com/svetsed/url_shortener/internal/model"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 )
 
 var _ storage.FileRepository = (*fileStorage)(nil)
 
 type fileStorage struct {
 	filepath string
-	urls 	 []model.URL
-	mu	 	 sync.RWMutex
+	urls     []model.URL
+	mu       sync.RWMutex
 	encoder  *json.Encoder
-	file 	 *os.File
-	dirty	 bool
+	file     *os.File
+	dirty    bool
 }
 
 func NewFileStorage(filepath string) (*fileStorage, error) {
 	if filepath == "" {
 		return nil, fmt.Errorf("empty filepath")
 	}
-	
+
 	fs := &fileStorage{
 		filepath: filepath,
-		urls: make([]model.URL, 0),
+		urls:     make([]model.URL, 0),
 	}
 
 	f, err := os.OpenFile(fs.filepath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
@@ -49,8 +49,8 @@ func NewFileStorage(filepath string) (*fileStorage, error) {
 
 func (fs *fileStorage) load() error {
 	if _, err := fs.file.Seek(0, 0); err != nil {
-        return err
-    }
+		return err
+	}
 
 	scanner := bufio.NewScanner(fs.file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -77,7 +77,6 @@ func (fs *fileStorage) load() error {
 	return nil
 }
 
-
 // ----------------   Implement Closer   ----------------
 
 func (fs *fileStorage) Close() error {
@@ -92,7 +91,6 @@ func (fs *fileStorage) Close() error {
 
 	return retErr
 }
-
 
 // ---------------- Implement Repository ----------------
 
@@ -121,10 +119,10 @@ func (fs *fileStorage) SaveManyURL(newURLs []*model.URL) error {
 	}
 
 	for _, url := range newURLs {
-        if err := fs.encoder.Encode(url); err != nil {
+		if err := fs.encoder.Encode(url); err != nil {
 			// logger без прерывания?
-            return err
-        }
+			return err
+		}
 
 		fs.urls = append(fs.urls, *url)
 	}
@@ -171,13 +169,13 @@ func (fs *fileStorage) GetUserURLs(userID string) ([]model.URL, error) {
 }
 
 func (fs *fileStorage) MarkAsDeleted(shortURLs []string, userID string) error {
-    if shortURLs == nil {
+	if shortURLs == nil {
 		return fmt.Errorf("send nil slice with shortURLs")
 	}
 
 	fs.mu.Lock()
-    defer fs.mu.Unlock()
-    
+	defer fs.mu.Unlock()
+
 	toDelete := make(map[string]bool)
 	for _, shortURL := range shortURLs {
 		toDelete[shortURL] = true
@@ -209,10 +207,10 @@ func (fs *fileStorage) Flush() error {
 	}
 
 	f, err := os.OpenFile(fs.filepath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-    if err != nil {
-        return err
-    }
-    defer f.Close()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
 	encoder := json.NewEncoder(f)
 	for _, url := range fs.urls {

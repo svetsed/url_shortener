@@ -15,27 +15,27 @@ import (
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
-	"github.com/svetsed/url_shortener/storage/mock"
+	"github.com/svetsed/url_shortener/internal/storage/mock"
 	"go.uber.org/zap"
 )
 
 var sugarLog = zap.NewNop().Sugar()
 
 func TestCreateShortURLHandler(t *testing.T) {
-    cfg := config.NewDefaultConfig()
+	cfg := config.NewDefaultConfig()
 
 	type want struct {
-		code 		int
-		response 	string
+		code        int
+		response    string
 		contentType string
 	}
 
 	tests := []struct {
-		name      string
-		want      want
-		method    string
-		body      []byte
-		setup  	  func(*mock.MockStorage)
+		name   string
+		want   want
+		method string
+		body   []byte
+		setup  func(*mock.MockStorage)
 	}{
 		{
 			name: "valid POST request with new URL",
@@ -134,7 +134,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   []byte("https://example.com/" + strings.Repeat("a", 1000)),
 		},
-		{	
+		{
 			name: "URL with param and fragment",
 			want: want{
 				code:        http.StatusCreated,
@@ -203,7 +203,7 @@ func TestCreateShortURLHandler(t *testing.T) {
 }
 
 func TestRedirectToOrigURLHandler(t *testing.T) {
-    cfg := config.NewDefaultConfig()
+	cfg := config.NewDefaultConfig()
 
 	type want struct {
 		code        int
@@ -212,12 +212,12 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		want       want
-		method     string
-		pathValue  string
-		setup      func(*mock.MockStorage)
-		checkBody  bool // if error have
+		name      string
+		want      want
+		method    string
+		pathValue string
+		setup     func(*mock.MockStorage)
+		checkBody bool // if error have
 	}{
 		{
 			name: "base case - successful redirect",
@@ -244,10 +244,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodPost,
-			pathValue:  "abc123",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodPost,
+			pathValue: "abc123",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "method not allowed - PUT request",
@@ -256,10 +256,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodPut,
-			pathValue:  "abc123",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodPut,
+			pathValue: "abc123",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "method not allowed - DELETE request",
@@ -268,10 +268,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodDelete,
-			pathValue:  "abc123",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodDelete,
+			pathValue: "abc123",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "empty ID in path",
@@ -280,10 +280,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodGet,
-			pathValue:  "",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodGet,
+			pathValue: "",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "non-existent short URL",
@@ -292,10 +292,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodGet,
-			pathValue:  "nonexistent",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodGet,
+			pathValue: "nonexistent",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "very long pathValue",
@@ -304,10 +304,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodGet,
-			pathValue:  strings.Repeat("a", 1000),
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodGet,
+			pathValue: strings.Repeat("a", 1000),
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "ID with special characters",
@@ -316,10 +316,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 				location:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
-			method:     http.MethodGet,
-			pathValue:  "abc@#$123",
-			setup:      nil,
-			checkBody:  true,
+			method:    http.MethodGet,
+			pathValue: "abc@#$123",
+			setup:     nil,
+			checkBody: true,
 		},
 		{
 			name: "redirect to URL with params and fragment",
@@ -409,10 +409,10 @@ func TestRedirectToOrigURLHandler(t *testing.T) {
 func TestCreateShortURLHandlerFromJSON(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 
-	tests := []struct{
-		name 		   string
-		method 		   string
-		body  		   string
+	tests := []struct {
+		name           string
+		method         string
+		body           string
 		expectedStatus int
 	}{
 		{

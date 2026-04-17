@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-var mayCompress = map[string]bool {
-	"application/json": 	  true,
+var mayCompress = map[string]bool{
+	"application/json":       true,
 	"application/javascript": true,
-	"text/css": 			  true,
-	"text/html": 			  true,
-	"text/plain": 			  true,
-	"text/xml": 			  true,
+	"text/css":               true,
+	"text/html":              true,
+	"text/plain":             true,
+	"text/xml":               true,
 }
 
 type gzipWriter struct {
@@ -50,7 +50,7 @@ func (gw *gzipWriter) Write(b []byte) (int, error) {
 		if shouldCompress(contentType) && gw.statusCode < 300 && len(b) > 8 && !gw.skipGzip {
 			gw.Header().Set("Content-Encoding", "gzip")
 			gw.Header().Del("Content-Length")
-			
+
 			// Создаем gzip.Writer только когда точно решили сжимать
 			gz, err := gzip.NewWriterLevel(gw.ResponseWriter, gzip.BestSpeed)
 			if err != nil {
@@ -85,13 +85,13 @@ func (gw *gzipWriter) WriteHeader(statusCode int) {
 	gw.statusCode = statusCode
 
 	// Для статусов без тела — отправляем сразу
-    if statusCode == http.StatusNoContent || 
-       statusCode == http.StatusNotModified ||
-       statusCode < 200 || statusCode >= 300 {
-        gw.written = true
-        gw.skipGzip = true
-        gw.ResponseWriter.WriteHeader(statusCode)
-    }
+	if statusCode == http.StatusNoContent ||
+		statusCode == http.StatusNotModified ||
+		statusCode < 200 || statusCode >= 300 {
+		gw.written = true
+		gw.skipGzip = true
+		gw.ResponseWriter.WriteHeader(statusCode)
+	}
 }
 
 func (gw *gzipWriter) Close() error {
@@ -159,7 +159,7 @@ func parseAcceptEncoding(parts []string) map[string]float64 {
 
 		weight := 1.0
 
-		for i:= 1; i < len(encodingAndParams); i++ {
+		for i := 1; i < len(encodingAndParams); i++ {
 			param := strings.TrimSpace(encodingAndParams[i])
 			if strings.HasPrefix(param, "q=") {
 				qValue := strings.TrimPrefix(param, "q=")
@@ -183,24 +183,24 @@ func clientSupportsGzip(acceptEncoding []string) bool {
 		return false
 	}
 
-    // Если gzip есть с положительным весом — проверяем, не предпочитает ли клиент identity
-    if gzipWeight, ok := encodings["gzip"]; ok && gzipWeight > 0 {
-        // Если identity указан и имеет больший вес — не сжимаем
-        if identityWeight, hasIdentity := encodings["identity"]; hasIdentity {
-            if identityWeight > gzipWeight {
-                return false
-            }
-        }
-        return true
-    }
+	// Если gzip есть с положительным весом — проверяем, не предпочитает ли клиент identity
+	if gzipWeight, ok := encodings["gzip"]; ok && gzipWeight > 0 {
+		// Если identity указан и имеет больший вес — не сжимаем
+		if identityWeight, hasIdentity := encodings["identity"]; hasIdentity {
+			if identityWeight > gzipWeight {
+				return false
+			}
+		}
+		return true
+	}
 
 	// Проверяем wildcard
-    if starWeight, ok := encodings["*"]; ok && starWeight > 0 {
-        if identityWeight, hasIdentity := encodings["identity"]; hasIdentity && identityWeight >= starWeight {
-            return false
-        }
-        return true
-    }
+	if starWeight, ok := encodings["*"]; ok && starWeight > 0 {
+		if identityWeight, hasIdentity := encodings["identity"]; hasIdentity && identityWeight >= starWeight {
+			return false
+		}
+		return true
+	}
 
-    return false
+	return false
 }

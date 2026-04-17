@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/svetsed/url_shortener/internal/model"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 )
 
 var _ storage.Repository = (*MockStorage)(nil)
@@ -24,7 +24,7 @@ func (ms *MockStorage) Save(url *model.URL) error {
 	if ms.urls == nil {
 		return fmt.Errorf("storage not initialized")
 	}
-	
+
 	if url == nil {
 		return fmt.Errorf("nothing save")
 	}
@@ -42,7 +42,7 @@ func (ms *MockStorage) SaveManyURL(newURLs []*model.URL) error {
 	if ms.urls == nil {
 		return fmt.Errorf("storage not initialized")
 	}
-	
+
 	if newURLs == nil {
 		return storage.ErrNoDataForSave
 	}
@@ -81,7 +81,7 @@ func (ms *MockStorage) GetUserURLs(userID string) ([]model.URL, error) {
 	return nil, nil
 }
 
-func (ms *MockStorage) 	MarkAsDeleted(shortURLs []string, userID string) error {
+func (ms *MockStorage) MarkAsDeleted(shortURLs []string, userID string) error {
 	// TODO
 	return nil
 }

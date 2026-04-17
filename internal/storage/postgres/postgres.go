@@ -8,31 +8,31 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/svetsed/url_shortener/internal/model"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 	"go.uber.org/zap"
 )
 
 var _ storage.DBRepository = (*postgresStorage)(nil)
 
 type postgresStorage struct {
-	db *sql.DB
+	db       *sql.DB
 	sugarLog *zap.SugaredLogger
 }
 
 func NewPostgresStorage(dsn string, sugarLog *zap.SugaredLogger) (*postgresStorage, error) {
 	if dsn == "" {
-        return nil, fmt.Errorf("database DSN is empty")
-    }
-	
+		return nil, fmt.Errorf("database DSN is empty")
+	}
+
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// // Настройки пула соединений
-    // db.SetMaxOpenConns(25)
-    // db.SetMaxIdleConns(5)
-    // db.SetConnMaxLifetime(5 * time.Minute)
+	// db.SetMaxOpenConns(25)
+	// db.SetMaxIdleConns(5)
+	// db.SetConnMaxLifetime(5 * time.Minute)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -72,7 +72,6 @@ func (ps *postgresStorage) createDB(ctx context.Context) error {
 	return err
 }
 
-
 // ----------------   Implement Pinger   ----------------
 
 func (ps *postgresStorage) Ping(ctx context.Context) error {
@@ -82,7 +81,6 @@ func (ps *postgresStorage) Ping(ctx context.Context) error {
 
 	return ps.db.PingContext(ctx)
 }
-
 
 // ---------------- Implement Repository ----------------
 
@@ -101,7 +99,7 @@ func (ps *postgresStorage) Save(url *model.URL) error {
 		return fmt.Errorf("failed to save url: %w", err)
 	}
 
-    return nil
+	return nil
 }
 
 func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
@@ -109,9 +107,9 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 	defer cancel()
 
 	tx, err := ps.db.BeginTx(ctx, nil)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	defer tx.Rollback()
 
 	query := `
@@ -121,8 +119,8 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
-        return err
-    }
+		return err
+	}
 	defer stmt.Close()
 
 	for _, url := range newURLs {
@@ -136,7 +134,7 @@ func (ps *postgresStorage) SaveManyURL(newURLs []*model.URL) error {
 }
 
 func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
@@ -165,11 +163,11 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 		return nil, fmt.Errorf("failed to get by short url: %w", err)
 	}
 
-    return url, nil
+	return url, nil
 }
 
 func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// переделать на несколько ссылок
@@ -188,7 +186,7 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 		&url.NeedDelete,
 	)
 
-	if  err == sql.ErrNoRows {
+	if err == sql.ErrNoRows {
 		ps.sugarLog.Infof("GetByOringURL: was error storage.ErrorNotFound; origURL= %s", origURL)
 		return nil, storage.ErrorNotFound
 	}
@@ -198,15 +196,15 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 		return nil, fmt.Errorf("failed to get by original url: %w", err)
 	}
 
-    return url, nil
+	return url, nil
 }
 
 func (ps *postgresStorage) GetUserURLs(userID string) ([]model.URL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := ps.db.QueryContext(ctx, 
-		"SELECT id, short_url, original_url, user_id FROM urls WHERE user_id = $1", 
+	rows, err := ps.db.QueryContext(ctx,
+		"SELECT * FROM urls WHERE user_id = $1",
 		userID,
 	)
 	if err != nil {
@@ -220,9 +218,10 @@ func (ps *postgresStorage) GetUserURLs(userID string) ([]model.URL, error) {
 
 		err := rows.Scan(
 			&url.ID,
-            &url.ShortURL,
-            &url.OriginalURL,
-            &url.UserID,
+			&url.ShortURL,
+			&url.OriginalURL,
+			&url.UserID,
+			&url.NeedDelete,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan failed for user_id=%s: %w", userID, err)
@@ -233,13 +232,13 @@ func (ps *postgresStorage) GetUserURLs(userID string) ([]model.URL, error) {
 
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("rows iteration error: %w", err)
-    }
+	}
 
 	return userURLs, nil
 }
 
 func (ps *postgresStorage) MarkAsDeleted(shortURLs []string, userID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
@@ -260,7 +259,6 @@ func (ps *postgresStorage) MarkAsDeleted(shortURLs []string, userID string) erro
 
 	return nil
 }
-
 
 // ----------------   Implement Closer   ----------------
 

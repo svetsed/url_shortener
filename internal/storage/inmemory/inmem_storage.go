@@ -5,14 +5,14 @@ import (
 	"sync"
 
 	"github.com/svetsed/url_shortener/internal/model"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 )
 
 var _ storage.Repository = (*memoryStorage)(nil)
 
 type memoryStorage struct {
 	urls []model.URL
-	mu	 sync.RWMutex
+	mu   sync.RWMutex
 }
 
 func NewMemoryStorage() *memoryStorage {
@@ -20,7 +20,6 @@ func NewMemoryStorage() *memoryStorage {
 		urls: make([]model.URL, 0),
 	}
 }
-
 
 // ---------------- Implement Repository ----------------
 
@@ -90,13 +89,13 @@ func (ms *memoryStorage) GetUserURLs(userID string) ([]model.URL, error) {
 }
 
 func (ms *memoryStorage) MarkAsDeleted(shortURLs []string, userID string) error {
-    if shortURLs == nil {
+	if shortURLs == nil {
 		return fmt.Errorf("send nil slice with shortURLs")
 	}
 
 	ms.mu.Lock()
-    defer ms.mu.Unlock()
-    
+	defer ms.mu.Unlock()
+
 	toDelete := make(map[string]bool)
 	for _, shortURL := range shortURLs {
 		toDelete[shortURL] = true
@@ -108,5 +107,5 @@ func (ms *memoryStorage) MarkAsDeleted(shortURLs []string, userID string) error 
 		}
 	}
 
-    return nil
+	return nil
 }

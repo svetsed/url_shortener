@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/svetsed/url_shortener/internal/model"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 )
 
 type Service struct {
@@ -52,8 +52,8 @@ func (s *Service) CreateShortURL(origURL string) (*model.URL, error) {
 	}
 
 	url := &model.URL{
-		ID: id.String(),
-		ShortURL: shortURL,
+		ID:          id.String(),
+		ShortURL:    shortURL,
 		OriginalURL: origURL,
 	}
 
@@ -100,7 +100,7 @@ func (s *Service) IsValidURL(someURL string) (*model.URL, error) {
 	if !u.IsAbs() {
 		return nil, fmt.Errorf("empty scheme")
 	}
-	
+
 	url, err := s.repo.GetByOringURL(someURL)
 	if err != nil {
 		return nil, err
