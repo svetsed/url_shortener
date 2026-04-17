@@ -8,13 +8,12 @@ import (
 )
 
 var (
-	ErrorNotFound 			   = errors.New("not found")
-	ErrorNotSupported 		   = errors.New("not supported")
+	ErrorNotFound              = errors.New("not found")
+	ErrorNotSupported          = errors.New("not supported")
 	ErrorStorageNotInitialized = errors.New("storage not initialized")
 	ErrURLAlreadyExist         = errors.New("url already exists")
-	ErrNoDataForSave		   = errors.New("no data for save")
-	ErrNothingToDelete		   = errors.New("nothing to delete")
-
+	ErrNoDataForSave           = errors.New("no data for save")
+	ErrNothingToDelete         = errors.New("nothing to delete")
 )
 
 type Repository interface {

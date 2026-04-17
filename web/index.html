@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сокращатель ссылок</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Сервис сокращения ссылок</h1>
+
+    <div class="card">
+        <h2>Создать короткую ссылку</h2>
+        <form id="createForm">
+            <input type="url" id="originalUrl" placeholder="https://example.com/очень-длинная-ссылка..." required>
+            <button type="submit">✨ Сократить</button>
+        </form>
+        <div id="result" class="result hidden">
+            <p style="margin:0; font-weight:500;">🔗 Ваша короткая ссылка:</p>
+            <a href="#" id="shortUrl" target="_blank"></a>
+            <button id="copyBtn">📋 Копировать</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Мои ссылки</h2>
+            <button id="refreshBtn" class="refresh-icon-btn" title="Обновить список с сервера">
+                <span class="refresh-icon">🔄</span>
+                <span>Обновить</span>
+            </button>
+        </div>
+        <div id="urlsList">
+            <div class="loading">📡 Загрузка ссылок...</div>
+        </div>
+        <div class="cache-panel" id="cacheStatusPanel">
+            <div class="cache-badge" id="cacheIndicator">📦 Статус: проверка...</div>
+            <div id="remoteChangeWarning" class="cache-warning" style="display: none;">
+                ⚠️ Данные изменились в другой вкладке — нажмите "Обновить"
+            </div>
+            <span id="manualClearCache" class="clear-cache-link">🗑️ Очистить кэш</span>
+        </div>
+    </div>
+</div>
+<script src="/static/script.js"></script>
+</body>
+</html>

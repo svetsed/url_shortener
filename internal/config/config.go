@@ -12,17 +12,17 @@ import (
 )
 
 type Config struct {
-	LoadAddress 	string	`env:"SERVER_ADDRESS"`
-	BaseAddress 	string	`env:"BASE_URL"`
-	FileStoragePath string  `env:"FILE_STORAGE_PATH"` 	// may empty value
-	DatabaseDSN		string	`env:"DATABASE_DSN"`		// may empty value
-	CookieSecret	string	`env:"SECRET_COOKIE"`
+	LoadAddress     string `env:"SERVER_ADDRESS"`
+	BaseAddress     string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"` // may empty value
+	DatabaseDSN     string `env:"DATABASE_DSN"`      // may empty value
+	CookieSecret    string `env:"SECRET_COOKIE"`
 }
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		LoadAddress: 	 ":8080",
-		BaseAddress: 	 "http://localhost:8080",
+		LoadAddress:     ":8080",
+		BaseAddress:     "http://localhost:8080",
 		FileStoragePath: "/tmp/short-url-db.json",
 	}
 }
@@ -32,7 +32,6 @@ func SettingConfig(cfg *Config) error {
 	flag.StringVar(&cfg.BaseAddress, "b", "http://localhost:8080", "base address for the resulting shortened URL")
 	flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/short-url-db.json", "path to the file to save data to disk")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "connection string")
-
 
 	if !flag.Parsed() {
 		flag.Parse()
@@ -46,7 +45,7 @@ func SettingConfig(cfg *Config) error {
 	if v, exist := os.LookupEnv("FILE_STORAGE_PATH"); exist {
 		cfg.FileStoragePath = v
 	}
-		
+
 	if v, exist := os.LookupEnv("DATABASE_DSN"); exist {
 		cfg.DatabaseDSN = v
 	}
@@ -64,16 +63,16 @@ func (c *Config) validate() error {
 	}
 
 	if err := c.validateBaseAddress(); err != nil {
-        return fmt.Errorf("invalid base address: %w", err)
-    }
-    
-    return nil
+		return fmt.Errorf("invalid base address: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Config) validateLoadAddress() error {
 	if c.LoadAddress == "" {
-        return fmt.Errorf("address cannot be empty")
-    }
+		return fmt.Errorf("address cannot be empty")
+	}
 
 	_, port, err := net.SplitHostPort(c.LoadAddress)
 	if err != nil {
@@ -89,8 +88,8 @@ func (c *Config) validateLoadAddress() error {
 
 func (c *Config) validateBaseAddress() error {
 	if c.BaseAddress == "" {
-        return fmt.Errorf("base address cannot be empty")
-    }
+		return fmt.Errorf("base address cannot be empty")
+	}
 
 	if !strings.HasPrefix(c.BaseAddress, "http://") && !strings.HasPrefix(c.BaseAddress, "https://") {
 		c.BaseAddress = "http://" + c.BaseAddress
@@ -99,11 +98,11 @@ func (c *Config) validateBaseAddress() error {
 	parsed, err := url.Parse(c.BaseAddress)
 	if err != nil {
 		return fmt.Errorf("invalid URL format: %w", err)
-    }
+	}
 
 	if parsed.Host == "" {
 		return fmt.Errorf("host is required in base address")
-    }
+	}
 
 	host, port, _ := net.SplitHostPort(parsed.Host)
 	if host == "" {

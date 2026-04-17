@@ -43,7 +43,7 @@ func LoggingMiddleware(sugarLog *zap.SugaredLogger) func(http.Handler) http.Hand
 
 			lw := logResponseWriter{
 				ResponseWriter: w,
-				responseData: respData,
+				responseData:   respData,
 			}
 
 			next.ServeHTTP(&lw, r)

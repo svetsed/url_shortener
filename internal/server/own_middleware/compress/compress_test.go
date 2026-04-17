@@ -22,7 +22,7 @@ func TestGzipMiddleware(t *testing.T) {
 		expectCompressed    bool
 		expectStatusCode    int
 		expectError         bool
-		invalidGzip 		bool
+		invalidGzip         bool
 	}{
 		{
 			name:                "client supports gzip, compressible content",
@@ -88,7 +88,7 @@ func TestGzipMiddleware(t *testing.T) {
 		{
 			name:                "invalid gzip data in request",
 			contentEncoding:     "gzip",
-			invalidGzip: 		 true,
+			invalidGzip:         true,
 			requestBody:         "invalid gzip data",
 			acceptEncoding:      []string{"gzip"},
 			responseBody:        "",
@@ -104,8 +104,8 @@ func TestGzipMiddleware(t *testing.T) {
 			responseContentType: "application/json",
 			responseStatusCode:  http.StatusNotFound,
 			// сжимает если status < 300, 404 >= 300, значит НЕ сжимает
-			expectCompressed:    false,
-			expectStatusCode:    http.StatusNotFound,
+			expectCompressed: false,
+			expectStatusCode: http.StatusNotFound,
 		},
 		{
 			name:                "multiple accept-encoding headers",
@@ -121,8 +121,8 @@ func TestGzipMiddleware(t *testing.T) {
 			responseBody:        `{"message": "hello"}`,
 			responseContentType: "application/json",
 			// identity с весом 1.0 > gzip с весом 0.5, клиент предпочитает без сжатия
-			expectCompressed:    false,
-			expectStatusCode:    http.StatusOK,
+			expectCompressed: false,
+			expectStatusCode: http.StatusOK,
 		},
 	}
 
@@ -161,7 +161,7 @@ func TestGzipMiddleware(t *testing.T) {
 			var body io.Reader
 			if tt.contentEncoding == "gzip" {
 				if tt.invalidGzip {
-        			body = strings.NewReader(tt.requestBody)
+					body = strings.NewReader(tt.requestBody)
 				} else {
 					var buf bytes.Buffer
 					if tt.requestBody != "" {
@@ -272,7 +272,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      true,
 			statusCode:          http.StatusOK,
 			// Пустое тело не сжимаем (нет смысла)
-			expectCompressed:    false,
+			expectCompressed: false,
 		},
 		{
 			name:                "very small response (less than compression threshold)",
@@ -282,7 +282,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      true,
 			statusCode:          http.StatusOK,
 			// Маленькие ответы не сжимаем (overhead gzip > выигрыша)
-			expectCompressed:    false,
+			expectCompressed: false,
 		},
 		{
 			name:                "status code 204 No Content",
@@ -310,7 +310,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      true,
 			statusCode:          http.StatusInternalServerError,
 			// 500 >= 300, значит НЕ сжимаем
-			expectCompressed:    false,
+			expectCompressed: false,
 		},
 		{
 			name:                "content type not set before write",
@@ -320,7 +320,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      false,
 			statusCode:          http.StatusOK,
 			// DetectContentType определит как application/json
-			expectCompressed:    true,
+			expectCompressed: true,
 		},
 		{
 			name:                "content type with charset",
@@ -366,7 +366,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      true,
 			statusCode:          http.StatusOK,
 			// должен использовать значение по умолчанию 1.0
-			expectCompressed:    true,
+			expectCompressed: true,
 		},
 		{
 			name:                "no content-type header",
@@ -376,7 +376,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      false,
 			statusCode:          http.StatusOK,
 			// определится как text/plain через DetectContentType
-			expectCompressed:    true,
+			expectCompressed: true,
 		},
 		{
 			name:                "binary content detected as non-compressible",
@@ -386,7 +386,7 @@ func TestEdgeCases(t *testing.T) {
 			setContentType:      false,
 			statusCode:          http.StatusOK,
 			// должен определиться как image/png (или application/octet-stream)
-			expectCompressed:    false,
+			expectCompressed: false,
 		},
 	}
 
@@ -525,14 +525,14 @@ func TestLargeData(t *testing.T) {
 			expectCompressed: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Генерируем данные нужного размера
 			var data string
 			if tt.contentType == "application/json" {
 				// Используем повторяющийся JSON для лучшего сжатия
-				pattern := `{"id":1234567890,"name":"test","data":"` + 
+				pattern := `{"id":1234567890,"name":"test","data":"` +
 					strings.Repeat("x", 100) + `"},`
 				repetitions := tt.dataSize / len(pattern)
 				if repetitions < 1 {
@@ -551,49 +551,49 @@ func TestLargeData(t *testing.T) {
 				}
 				data = string(b)
 			}
-			
+
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", tt.contentType)
 				w.Write([]byte(data))
 			})
-			
+
 			middleware := GzipMiddleware(handler)
 			req := httptest.NewRequest("GET", "/", nil)
 			for _, ae := range tt.acceptEncoding {
 				req.Header.Add("Accept-Encoding", ae)
 			}
-			
+
 			rw := httptest.NewRecorder()
 			middleware.ServeHTTP(rw, req)
-			
+
 			contentEncoding := rw.Header().Get("Content-Encoding")
-			
+
 			if tt.expectCompressed {
 				if contentEncoding != "gzip" {
 					t.Errorf("expected gzip encoding, got %q", contentEncoding)
 				}
-				
+
 				// Проверяем, что сжатие действительно уменьшило размер (для сжимаемых данных)
 				if tt.contentType == "application/json" && len(data) > 1024 {
 					compressedSize := rw.Body.Len()
 					if compressedSize >= len(data) {
-						t.Logf("Warning: compressed size (%d) is not smaller than original (%d)", 
+						t.Logf("Warning: compressed size (%d) is not smaller than original (%d)",
 							compressedSize, len(data))
 					}
 				}
-				
+
 				// Распаковываем и проверяем содержимое
 				gzReader, err := gzip.NewReader(rw.Body)
 				if err != nil {
 					t.Fatalf("failed to create gzip reader: %v", err)
 				}
 				defer gzReader.Close()
-				
+
 				decompressed, err := io.ReadAll(gzReader)
 				if err != nil {
 					t.Fatalf("failed to decompress: %v", err)
 				}
-				
+
 				if len(decompressed) != len(data) {
 					t.Errorf("decompressed size = %d, want %d", len(decompressed), len(data))
 				}
@@ -602,7 +602,7 @@ func TestLargeData(t *testing.T) {
 					t.Errorf("unexpected gzip encoding for non-compressible data")
 				}
 			}
-			
+
 			// Проверяем, что нет паники и запрос завершился успешно
 			if rw.Code != http.StatusOK {
 				t.Errorf("status code = %d, want %d", rw.Code, http.StatusOK)
@@ -618,31 +618,31 @@ func TestMultipleWriteCalls(t *testing.T) {
 		w.Write([]byte(`{"message": "part1"`))
 		w.Write([]byte(` "part2"}`))
 	})
-	
+
 	middleware := GzipMiddleware(handler)
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
-	
+
 	rw := httptest.NewRecorder()
 	middleware.ServeHTTP(rw, req)
-	
+
 	// Проверяем, что ответ сжат
 	if rw.Header().Get("Content-Encoding") != "gzip" {
 		t.Error("expected gzip encoding")
 	}
-	
+
 	// Распаковываем и проверяем содержимое
 	gzReader, err := gzip.NewReader(rw.Body)
 	if err != nil {
 		t.Fatalf("failed to create gzip reader: %v", err)
 	}
 	defer gzReader.Close()
-	
+
 	decompressed, err := io.ReadAll(gzReader)
 	if err != nil {
 		t.Fatalf("failed to decompress: %v", err)
 	}
-	
+
 	expected := `{"message": "part1" "part2"}`
 	if string(decompressed) != expected {
 		t.Errorf("decompressed body = %q, want %q", string(decompressed), expected)
@@ -656,14 +656,14 @@ func TestWriteHeaderAfterWrite(t *testing.T) {
 		w.Write([]byte(`{"message": "test"}`))
 		w.WriteHeader(http.StatusCreated) // Это не должно изменить статус
 	})
-	
+
 	middleware := GzipMiddleware(handler)
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
-	
+
 	rw := httptest.NewRecorder()
 	middleware.ServeHTTP(rw, req)
-	
+
 	// Должен быть StatusOK, так как Write был вызван до WriteHeader
 	if rw.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rw.Code, http.StatusOK)
@@ -676,13 +676,13 @@ func TestConcurrentRequests(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"message": "hello"}`))
 	})
-	
+
 	middleware := GzipMiddleware(handler)
-	
+
 	// Запускаем 100 конкурентных запросов
 	concurrency := 100
 	done := make(chan bool, concurrency)
-	
+
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			defer func() {
@@ -691,24 +691,24 @@ func TestConcurrentRequests(t *testing.T) {
 				}
 				done <- true
 			}()
-			
+
 			req := httptest.NewRequest("GET", "/", nil)
 			req.Header.Set("Accept-Encoding", "gzip")
-			
+
 			rw := httptest.NewRecorder()
 			middleware.ServeHTTP(rw, req)
-			
+
 			// Проверяем результат
 			if rw.Code != http.StatusOK {
 				t.Errorf("status code = %d, want %d", rw.Code, http.StatusOK)
 			}
-			
+
 			if rw.Header().Get("Content-Encoding") != "gzip" {
 				t.Error("expected gzip encoding")
 			}
 		}()
 	}
-	
+
 	// Ждем завершения всех запросов
 	for i := 0; i < concurrency; i++ {
 		<-done
@@ -719,12 +719,12 @@ func TestConcurrentRequests(t *testing.T) {
 func BenchmarkGzipMiddleware(b *testing.B) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "hello world", "data": "` + 
+		w.Write([]byte(`{"message": "hello world", "data": "` +
 			strings.Repeat("x", 1000) + `"}`))
 	})
-	
+
 	middleware := GzipMiddleware(handler)
-	
+
 	b.Run("with compression", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			req := httptest.NewRequest("GET", "/", nil)
@@ -733,7 +733,7 @@ func BenchmarkGzipMiddleware(b *testing.B) {
 			middleware.ServeHTTP(rw, req)
 		}
 	})
-	
+
 	b.Run("without compression", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			req := httptest.NewRequest("GET", "/", nil)
@@ -760,7 +760,7 @@ func TestShouldCompress(t *testing.T) {
 		{"Video", "video/mp4", false},
 		{"Empty", "", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := shouldCompress(tt.contentType)

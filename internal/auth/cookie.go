@@ -26,7 +26,7 @@ func CreateSignedUserID(userID string) (string, error) {
 	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(userID))
 	signature := hex.EncodeToString(h.Sum(nil))[:32]
-	return userID + ":" + signature,  nil
+	return userID + ":" + signature, nil
 }
 
 func VerifySignedUserID(signedValue string) (string, bool) {
@@ -51,35 +51,35 @@ func VerifySignedUserID(signedValue string) (string, bool) {
 }
 
 func CreateNewUser(w http.ResponseWriter) (string, error) {
-    newUserID := uuid.New().String()
-    
-    signedValue, err := CreateSignedUserID(newUserID)
-    if err != nil {
-        return "", fmt.Errorf("failed to create userID: %w", err)
-    }
-    
-    http.SetCookie(w, &http.Cookie{
-        Name:     "user_id",
-        Value:    signedValue,
-        Path:     "/",
-        HttpOnly: true,
-    })
-    
-    return newUserID, nil
+	newUserID := uuid.New().String()
+
+	signedValue, err := CreateSignedUserID(newUserID)
+	if err != nil {
+		return "", fmt.Errorf("failed to create userID: %w", err)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_id",
+		Value:    signedValue,
+		Path:     "/",
+		HttpOnly: true,
+	})
+
+	return newUserID, nil
 }
 
 func GetUserIDFromCookie(r *http.Request) (string, error) {
-    cookie, err := r.Cookie("user_id")
-    if err != nil {
-        return "", fmt.Errorf("cookie user_id not found")
-    }
-    
-    userID, ok := VerifySignedUserID(cookie.Value)
-    if !ok {
-        return "", fmt.Errorf("invalid cookie signature")
-    }
-    
-    return userID, nil
+	cookie, err := r.Cookie("user_id")
+	if err != nil {
+		return "", fmt.Errorf("cookie user_id not found")
+	}
+
+	userID, ok := VerifySignedUserID(cookie.Value)
+	if !ok {
+		return "", fmt.Errorf("invalid cookie signature")
+	}
+
+	return userID, nil
 }
 
 func GetOrCreateUserID(w http.ResponseWriter, r *http.Request) (string, error) {

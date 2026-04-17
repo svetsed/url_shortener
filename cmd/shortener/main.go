@@ -3,6 +3,9 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -11,10 +14,10 @@ import (
 	"github.com/svetsed/url_shortener/internal/server/own_middleware/compress"
 	"github.com/svetsed/url_shortener/internal/server/own_middleware/logger"
 	"github.com/svetsed/url_shortener/internal/service"
-	"github.com/svetsed/url_shortener/storage"
-	filestorage "github.com/svetsed/url_shortener/storage/file_storage"
-	"github.com/svetsed/url_shortener/storage/inmemory"
-	"github.com/svetsed/url_shortener/storage/postgres"
+	"github.com/svetsed/url_shortener/internal/storage"
+	filestorage "github.com/svetsed/url_shortener/internal/storage/file_storage"
+	"github.com/svetsed/url_shortener/internal/storage/inmemory"
+	"github.com/svetsed/url_shortener/internal/storage/postgres"
 	"go.uber.org/zap"
 )
 
@@ -80,15 +83,42 @@ func main() {
 		compress.GzipMiddleware,
 	)
 
-	r.Post("/", h.CreateShortURLHandler)
+	workDir, _ := os.Getwd()
+	webDir := filepath.Join(workDir, "web")
+
+	// Статика
+	fs := http.FileServer(http.Dir(webDir))
+	r.Handle("/static/*", http.StripPrefix("/static/", forceMime(fs)))
+
+	// favicon
+	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(webDir, "favicon.ico"))
+	})
+
+	// Главная страница
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(webDir, "index.html"))
+	})
+
 	r.Post("/api/shorten", h.CreateShortURLHandlerFromJSON)
 	r.Post("/api/shorten/batch", h.CreateShortURLsBatchHandler)
 	r.Get("/api/user/urls", h.GetUserURLsHandler)
+	r.Delete("/api/user/urls", h.DeleteUserURLsHandler)
+	r.Post("/", h.CreateShortURLHandler)
 	r.Get("/{id}", h.RedirectToOrigURLHandler)
 	r.Get("/ping", h.HealthCheckDBHandler)
-	r.Delete("/api/user/urls", h.DeleteUserURLsHandler)
 
 	sugarLog.Infof("server starts with: server address - %s, base url - %s", cfg.LoadAddress, cfg.BaseAddress)
-
 	sugarLog.Fatal(http.ListenAndServe(cfg.LoadAddress, r))
+}
+
+func forceMime(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".css") {
+			w.Header().Set("Content-Type", "text/css")
+		} else if strings.HasSuffix(r.URL.Path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript")
+		}
+		next.ServeHTTP(w, r)
+	})
 }

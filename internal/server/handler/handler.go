@@ -15,20 +15,20 @@ import (
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
-	"github.com/svetsed/url_shortener/storage"
+	"github.com/svetsed/url_shortener/internal/storage"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	service *service.Service
-	cfg     *config.Config
+	service  *service.Service
+	cfg      *config.Config
 	sugarLog *zap.SugaredLogger
 }
 
 func NewHandler(service *service.Service, cfg *config.Config, sugarLog *zap.SugaredLogger) *Handler {
 	return &Handler{
-		service: service,
-		cfg: cfg,
+		service:  service,
+		cfg:      cfg,
 		sugarLog: sugarLog,
 	}
 }
@@ -54,7 +54,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var url *model.URL 
+	var url *model.URL
 	status := http.StatusCreated
 	skipCreating := false
 	urlExist, err := h.service.IsValidURL(string(origURL))
@@ -111,7 +111,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	defer r.Body.Close()
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -249,7 +249,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 
 		respURLs = append(respURLs, model.ManyURLResponse{
 			CorrelationID: reqURL.CorrelationID,
-			ShortURL: h.cfg.BaseAddress + "/" + url.ShortURL,
+			ShortURL:      h.cfg.BaseAddress + "/" + url.ShortURL,
 		})
 	}
 
@@ -302,16 +302,24 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := []map[string]string{}
 	for _, url := range userURLs {
+		if url.NeedDelete {
+			continue
+		}
 		response = append(response, map[string]string{
 			"short_url":    h.cfg.BaseAddress + "/" + url.ShortURL,
-            "original_url": url.OriginalURL,
+			"original_url": url.OriginalURL,
 		})
 	}
 
+	if len(response) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
-
 
 // Get /{id}
 func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -344,7 +352,6 @@ func (h *Handler) RedirectToOrigURLHandler(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, foundOrigURL.OriginalURL, http.StatusTemporaryRedirect)
 }
 
-
 // Get /ping
 func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -369,7 +376,6 @@ func (h *Handler) HealthCheckDBHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
-
 
 // Delete /api/user/urls
 func (h *Handler) DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) {
@@ -403,13 +409,13 @@ func (h *Handler) DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	go func() {
-        err := h.service.MarkAsDeleted(shortURLs, userID)
-        if err != nil {
-            h.sugarLog.Errorf("failed to mark URLs as deleted for user %s: %v", userID, err)
-        } else {
-            h.sugarLog.Infof("successfully marked %d URLs as deleted for user %s", len(shortURLs), userID)
-        }
-    }()
+		err := h.service.MarkAsDeleted(shortURLs, userID)
+		if err != nil {
+			h.sugarLog.Errorf("failed to mark URLs as deleted for user %s: %v", userID, err)
+		} else {
+			h.sugarLog.Infof("successfully marked %d URLs as deleted for user %s", len(shortURLs), userID)
+		}
+	}()
 
 	w.WriteHeader(http.StatusAccepted)
 
