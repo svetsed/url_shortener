@@ -54,6 +54,12 @@ func NewPostgresStorage(dsn string, sugarLog *zap.SugaredLogger) (*postgresStora
 
 func (ps *postgresStorage) createDB(ctx context.Context) error {
 	query := `
+		CREATE TABLE IF NOT EXISTS users (
+			id SERIAL PRIMARY KEY,
+			user_uuid UUID NOT NULL UNIQUE,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+		);
+
 		CREATE TABLE IF NOT EXISTS urls (
 			id SERIAL PRIMARY KEY,
 			short_url VARCHAR(255) UNIQUE NOT NULL,
@@ -62,13 +68,7 @@ func (ps *postgresStorage) createDB(ctx context.Context) error {
 			is_deleted BOOLEAN DEFAULT FALSE
 		);
 
-		CREATE TABLE IF NOT EXISTS users (
-			id SERIAL PRIMARY KEY,
-			user_uuid UUID NOT NULL UNIQUE,
-			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_irls_short ON urls(short_url);
+		CREATE INDEX IF NOT EXISTS idx_urls_short ON urls(short_url);
 		CREATE INDEX IF NOT EXISTS idx_urls_original ON urls(original_url);
 		CREATE INDEX IF NOT EXISTS idx_urls_is_deleted ON urls(is_deleted);
 		CREATE INDEX IF NOT EXISTS idx_urls_user_id ON urls(user_id);
