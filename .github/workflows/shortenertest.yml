@@ -54,7 +54,8 @@ jobs:
           chmod -R +x $GITHUB_WORKSPACE/.tools
           mv $GITHUB_WORKSPACE/.tools/shortenertest_v2 /usr/local/bin/shortenertest
           mv $GITHUB_WORKSPACE/.tools/random /usr/local/bin/random
-          mv $GITHUB_WORKSPACE/.tools/wipedb /usr/local/bin/wipedb
+          # mv $GITHUB_WORKSPACE/.tools/wipedb /usr/local/bin/wipedb
+          go build -o /usr/local/bin/wipedb cmd/wipedb/main.go
 
       - name: Setup go deps
         run: |
