@@ -142,11 +142,11 @@ func (fs *fileStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	return nil, storage.ErrorNotFound
 }
 
-func (fs *fileStorage) GetByOringURL(origURL string) (*model.URL, error) {
+func (fs *fileStorage) GetByOringURL(origURL string, userID string) (*model.URL, error) {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 	for _, url := range fs.urls {
-		if url.OriginalURL == origURL {
+		if url.OriginalURL == origURL && url.UserID == userID {
 			return &url, nil
 		}
 	}

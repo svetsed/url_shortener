@@ -62,11 +62,11 @@ func (ms *memoryStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	return nil, storage.ErrorNotFound
 }
 
-func (ms *memoryStorage) GetByOringURL(origURL string) (*model.URL, error) {
+func (ms *memoryStorage) GetByOringURL(origURL string, userID string) (*model.URL, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 	for _, url := range ms.urls {
-		if url.OriginalURL == origURL {
+		if url.OriginalURL == origURL && url.UserID == userID {
 			return &url, nil
 		}
 	}

@@ -87,7 +87,7 @@ func (s *Service) MarkAsDeleted(shortURLs []string, userID string) error {
 
 // IsValidURL checks for an empty value, tries to parse the URL struct
 // and also checks that such a URL has not previosly been saved to the database.
-func (s *Service) IsValidURL(someURL string) (*model.URL, error) {
+func (s *Service) IsValidURL(someURL string, userID string) (*model.URL, error) {
 	if someURL == "" {
 		return nil, fmt.Errorf("empty url")
 	}
@@ -101,7 +101,7 @@ func (s *Service) IsValidURL(someURL string) (*model.URL, error) {
 		return nil, fmt.Errorf("empty scheme")
 	}
 
-	url, err := s.repo.GetByOringURL(someURL)
+	url, err := s.repo.GetByOringURL(someURL, userID)
 	if err != nil {
 		return nil, err
 	}

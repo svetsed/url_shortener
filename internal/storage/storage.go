@@ -20,7 +20,7 @@ type Repository interface {
 	Save(url *model.URL) error
 	SaveManyURL(newURLs []*model.URL) error
 	GetByShortURL(shortURL string) (*model.URL, error)
-	GetByOringURL(origURL string) (*model.URL, error)
+	GetByOringURL(origURL string, userID string) (*model.URL, error)
 	GetUserURLs(userID string) ([]model.URL, error)
 	MarkAsDeleted(shortURLs []string, userID string) error
 }

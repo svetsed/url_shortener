@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/svetsed/url_shortener/internal/auth"
+	"github.com/svetsed/url_shortener/internal/server/auth"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
 	"github.com/svetsed/url_shortener/internal/service"
@@ -57,7 +57,7 @@ func (h *Handler) CreateShortURLHandler(w http.ResponseWriter, r *http.Request) 
 	var url *model.URL
 	status := http.StatusCreated
 	skipCreating := false
-	urlExist, err := h.service.IsValidURL(string(origURL))
+	urlExist, err := h.service.IsValidURL(string(origURL), userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExist) {
 			url = urlExist
@@ -133,7 +133,7 @@ func (h *Handler) CreateShortURLHandlerFromJSON(w http.ResponseWriter, r *http.R
 	var url *model.URL
 	status := http.StatusCreated
 	skipCreating := false
-	urlExist, err := h.service.IsValidURL(string(reqURL.URL))
+	urlExist, err := h.service.IsValidURL(string(reqURL.URL), userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExist) {
 			url = urlExist
@@ -218,7 +218,7 @@ func (h *Handler) CreateShortURLsBatchHandler(w http.ResponseWriter, r *http.Req
 	for _, reqURL := range reqURLs {
 		skipCreating = false
 		var url model.URL
-		urlExist, err := h.service.IsValidURL(string(reqURL.OriginalURL))
+		urlExist, err := h.service.IsValidURL(string(reqURL.OriginalURL), userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrURLAlreadyExist) {
 				skipCreating = true
