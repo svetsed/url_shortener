@@ -66,9 +66,9 @@ func (ms *MockStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	return nil, storage.ErrorNotFound
 }
 
-func (ms *MockStorage) GetByOringURL(origURL string) (*model.URL, error) {
+func (ms *MockStorage) GetByOringURL(origURL string, userID string) (*model.URL, error) {
 	for _, url := range ms.urls {
-		if url.OriginalURL == origURL {
+		if url.OriginalURL == origURL && url.UserID == userID {
 			return url, nil
 		}
 	}

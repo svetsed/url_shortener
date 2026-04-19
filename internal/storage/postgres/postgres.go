@@ -233,16 +233,15 @@ func (ps *postgresStorage) GetByShortURL(shortURL string) (*model.URL, error) {
 	return url, nil
 }
 
-func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
+func (ps *postgresStorage) GetByOringURL(origURL string, userID string) (*model.URL, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// TODO проверить можно ли по условию задачи нескольким пользователям иметь одинаковые длинные ссылки(это логичнее)
 	query := `
 		SELECT urls.id, short_url, original_url, user_uuid, is_deleted
 		FROM urls
 		JOIN users ON urls.user_id = users.id
-		WHERE original_url = $1;
+		WHERE original_url = $1 AND user_uuid = $2;
 	`
 
 	stmt, err := ps.db.PrepareContext(ctx, query)
@@ -253,7 +252,7 @@ func (ps *postgresStorage) GetByOringURL(origURL string) (*model.URL, error) {
 	defer stmt.Close()
 
 	url := &model.URL{}
-	err = stmt.QueryRowContext(ctx, origURL).Scan(
+	err = stmt.QueryRowContext(ctx, origURL, userID).Scan(
 		&url.ID,
 		&url.ShortURL,
 		&url.OriginalURL,
