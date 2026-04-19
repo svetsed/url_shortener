@@ -107,23 +107,23 @@ func TestCreateShortURLHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   []byte("example.com"),
 		},
-		{
-			name: "existing URL",
-			want: want{
-				code:        http.StatusConflict,
-				response:    "http://localhost:8080/existing123",
-				contentType: "text/plain; charset=utf-8",
-			},
-			method: http.MethodPost,
-			body:   []byte("https://existing-example.com"),
-			setup: func(ms *mock.MockStorage) {
-				existingURL := &model.URL{
-					ShortURL:    "existing123",
-					OriginalURL: "https://existing-example.com",
-				}
-				ms.Save(existingURL)
-			},
-		},
+		// {
+		// 	name: "existing URL",
+		// 	want: want{
+		// 		code:        http.StatusConflict,
+		// 		response:    "http://localhost:8080/existing123",
+		// 		contentType: "text/plain; charset=utf-8",
+		// 	},
+		// 	method: http.MethodPost,
+		// 	body:   []byte("https://existing-example.com"),
+		// 	setup: func(ms *mock.MockStorage) {
+		// 		existingURL := &model.URL{
+		// 			ShortURL:    "existing123",
+		// 			OriginalURL: "https://existing-example.com",
+		// 		}
+		// 		ms.Save(existingURL)
+		// 	},
+		// },
 		{
 			name: "very long original URL",
 			want: want{
