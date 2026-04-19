@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/svetsed/url_shortener/internal/server/auth"
 	"github.com/svetsed/url_shortener/internal/config"
 	"github.com/svetsed/url_shortener/internal/model"
+	"github.com/svetsed/url_shortener/internal/server/auth"
 	"github.com/svetsed/url_shortener/internal/service"
 	"github.com/svetsed/url_shortener/internal/storage"
 	"go.uber.org/zap"
