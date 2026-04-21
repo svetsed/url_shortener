@@ -53,39 +53,159 @@ h1 {
     margin-bottom: 0;
 }
 
+/* ===== ДИЗАЙН-ТОКЕНЫ ===== */
+:root {
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 40px;
+    --transition: all 0.2s ease;
+    --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== БАЗОВЫЙ СТИЛЬ ДЛЯ ВСЕХ КНОПОК ===== */
+button,
+.batch-button,
+.delete-btn,
+.refresh-icon-btn,
+.batch-copy-btn,
+#copyBtn {
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+}
+
+/* Единый hover-эффект (без смещения) */
+button:hover,
+.batch-button:hover,
+.delete-btn:hover,
+.refresh-icon-btn:hover,
+.batch-copy-btn:hover,
+#copyBtn:hover {
+    transform: none;           /* отключаем любые translate/scale */
+    filter: brightness(0.98);  /* универсальное затемнение */
+    box-shadow: 0 3px 14px rgba(23, 1, 45, 0.15);
+}
+
+/* Активное состояние (нажатие) */
+button:active,
+.batch-button:active,
+.delete-btn:active,
+.refresh-icon-btn:active,
+.batch-copy-btn:active,
+#copyBtn:active {
+    transform: none;
+    filter: brightness(0.92);
+}
+
+/* Унифицированный фокус */
+button:focus-visible,
+.batch-button:focus-visible,
+.delete-btn:focus-visible,
+.refresh-icon-btn:focus-visible,
+.batch-copy-btn:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+/* ===== УНИФИКАЦИЯ РАДИУСОВ ===== */
+button, .delete-btn, .refresh-icon-btn, .batch-copy-btn, #copyBtn {
+    border-radius: var(--radius-md); /* 12px */
+}
+
+.batch-button {
+    border-radius: var(--radius-lg); /* 16px */
+}
+
+.card {
+    border-radius: var(--radius-xl); /* 20px */
+}
+
+.url-item, .batch-textarea, .result {
+    border-radius: var(--radius-md); /* 12px */
+}
+
+.cache-badge, .cache-warning {
+    border-radius: var(--radius-full); /* 40px */
+}
+
+/* ===== Дополнительные цвета, размеры и отступы для кнопок ===== */
+
+/* Основная кнопка "Создать короткую ссылку" */
+form button {
+    background: #667eea;
+    padding: 12px 24px;
+    font-size: 16px;
+    color: white;
+}
+
+/* Кнопка "Копировать" в результатах */
+#copyBtn {
+    background: #10b981;
+    padding: 12px 24px;
+    font-size: 16px;
+    min-width: 120px;
+    color: white;
+}
+
+/* Кнопка обновления (с иконкой) */
 .refresh-icon-btn {
     background: #f3f4f6;
-    border: none;
-    border-radius: 40px;
     padding: 8px 16px;
     font-size: 0.9rem;
-    font-weight: 500;
-    color: #4b5563;
-    cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    color: #4b5563;
 }
 
-.refresh-icon-btn:hover {
-    background: #e5e7eb;
-    color: #1f2937;
-    transform: scale(0.98);
+/* Кнопка удаления в списке ссылок */
+.delete-btn {
+    background: #fee2e2;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #b91c1c;
 }
 
-.refresh-icon-btn:active {
-    transform: scale(0.96);
+/* Кнопка копирования в массовых результатах */
+.batch-copy-btn {
+    background: #10b981;
+    color: white;
+    padding: 8px 16px;
+    font-size: 13px;
 }
 
-.refresh-icon-btn.loading {
+/* Кнопка "Создать все ссылки" */
+.batch-button {
+    background: #667eea;
+    color: white;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px 24px;
+    font-size: 16px;
+}
+
+/* Анимация загрузки для batch-button */
+.batch-button.loading {
     opacity: 0.7;
     pointer-events: none;
+    position: relative;
 }
 
-.refresh-icon-btn.loading .refresh-icon {
-    animation: spinRefresh 0.8s linear infinite;
+.batch-button.loading::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    margin-left: 10px;
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
 }
 
 @keyframes spinRefresh {
@@ -103,7 +223,7 @@ input[type="url"] {
     flex: 1;
     padding: 12px 16px;
     border: 2px solid #e2e8f0;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     font-size: 16px;
     transition: all 0.2s;
     background: #fafcff;
@@ -113,23 +233,6 @@ input[type="url"]:focus {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
-}
-
-button {
-    padding: 12px 24px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 14px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-button:hover {
-    background: #5a67d8;
-    transform: translateY(-1px);
 }
 
 .result {
@@ -165,8 +268,6 @@ button:hover {
     word-break: keep-all;
 
 }
-
-
 
 .url-item {
     background: #ffffff;
@@ -214,21 +315,6 @@ button:hover {
     word-break: break-all;
 }
 
-.delete-btn {
-    background: #fee2e2;
-    color: #b91c1c;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 30px;
-}
-
-.delete-btn:hover {
-    background: #fecaca;
-    color: #991b1b;
-    transform: none;
-}
-
 .loading {
     text-align: center;
     padding: 28px;
@@ -244,15 +330,6 @@ button:hover {
     border-radius: 16px;
     margin-top: 10px;
     font-size: 0.9rem;
-}
-
-#copyBtn {
-    background: #10b981;
-    min-width: 120px;
-}
-
-#copyBtn:hover {
-    background: #059669;
 }
 
 .cache-panel {
@@ -316,7 +393,6 @@ button:hover {
     animation: slideInRight 0.25s ease;
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
     backdrop-filter: blur(4px);
-    font-family: monospace;
 }
 
 @keyframes slideInRight {
@@ -328,6 +404,157 @@ button:hover {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* ===== БЛОК МАССОВОГО СОЗДАНИЯ(кроме кнопки) ===== */
+.batch-textarea {
+    width: 100%;
+    min-height: 100px;
+    max-height: 300px;
+    resize: vertical;
+    padding: 14px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    background: #fafcff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.batch-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+}
+
+.batch-textarea::placeholder {
+    color: #9ca3af;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+}
+
+/* Контейнер для результатов массового создания */
+.batch-result-container {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.batch-result-container.hidden {
+    display: none;
+}
+
+/* Карточка одного результата */
+.batch-result-item {
+    background: #f8fafc;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    border-left: 3px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    transition: all 0.2s;
+    animation: fadeInUp 0.2s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.batch-result-item.success {
+    border-left-color: #10b981;
+    background: #ebfef7;
+}
+
+.batch-result-item.error {
+    border-left-color: #ef4444;
+    background: #ffecec;
+}
+
+.batch-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.batch-result-original {
+    font-size: 12px;
+    color: #6b7280;
+    word-break: break-all;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.batch-result-short {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.batch-result-short a {
+    color: #4f46e5;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.batch-result-short a:hover {
+    text-decoration: underline;
+}
+
+.batch-result-error {
+    font-size: 13px;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Сводка результатов */
+.batch-summary {
+    border-top: 1px solid #eef2ff;
+    margin-top: 16px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.batch-summary-success {
+    color: #059669;
+}
+
+.batch-summary-error {
+    color: #dc2626;
+}
+
+.batch-summary-clear {
+    color: #667eea;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 12px;
+}
+
+.batch-summary-clear:hover {
+    color: #4c51bf;
+}
+
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 @media (max-width: 640px) {
@@ -383,6 +610,22 @@ button:hover {
     
     #copyBtn {
         width: 100%;
+    }
+
+    .batch-result-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .batch-copy-btn {
+        width: 100%;
+        text-align: center;
+        padding: 8px 14px;
+    }
+    
+    .batch-summary {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
