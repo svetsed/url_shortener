@@ -42,7 +42,16 @@
             <span id="manualClearCache" class="clear-cache-link">🗑️ Очистить кэш</span>
         </div>
     </div>
+
+    <div class="card batch-card">
+        <h2>Массовое создание ссылок</h2>
+        <textarea id="batchUrls" class="batch-textarea" rows="4" 
+            placeholder="Введите URL-адреса по одному на строке:&#10;https://example.com/page1&#10;https://google.com/search?q=test&#10;https://github.com/user/repo"></textarea>
+        <button id="batchCreateBtn" class="batch-button">🚀 Сократить все ссылки</button>
+        <div id="batchResult" class="batch-result-container hidden"></div>
+    </div>
 </div>
+
 <script src="/static/script.js"></script>
 </body>
 </html>
